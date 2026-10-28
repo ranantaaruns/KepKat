@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { t } from '../i18n'
 import { produce } from 'immer'
 import type {
   AnimatedProperty,
@@ -21,7 +22,6 @@ import {
   createEmptyProject,
   createMediaClip,
   createTextClip,
-  DEFAULT_TEXT,
   projectDimensions,
   uid,
 } from './defaults'
@@ -707,7 +707,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     const copy: Clip = {
       ...target,
       id: uid(),
-      name: `${target.name} salinan`,
+      name: t('defaults.copySuffix', { name: target.name }),
       start: clipEnd(target) + 0.1,
       transitionIn: undefined,
       keyframes: structuredClone(target.keyframes),
@@ -724,9 +724,9 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     const state = get()
     const count = state.project.tracks.filter((item) => item.kind === kind).length + 1
     const labels: Record<Exclude<TrackKind, 'video'>, string> = {
-      overlay: 'Overlay',
-      text: 'Teks',
-      audio: 'Audio',
+      overlay: t('trackKind.overlay'),
+      text: t('trackKind.text'),
+      audio: t('trackKind.audio'),
     }
     const next: Track = {
       id: uid(),
@@ -810,9 +810,9 @@ export const projectClipsForTrack = (project: Project, trackId: string): Clip[] 
 
 export const displayFilterName = (clip: Clip): string => filterName(clip.filterId)
 
-export const transitionPresetName = (type: TransitionType): string =>
-  TRANSITION_PRESETS.find((item) => item.type === type)?.name ?? 'Transisi'
+export const transitionPresetName = (type: TransitionType): string => {
+  const preset = TRANSITION_PRESETS.find((item) => item.type === type)
+  return preset ? t(preset.nameKey) : t('transition.fallback')
+}
 
 export const trackListForRender = (project: Project): Track[] => visualTracks(project)
-
-export const defaultTextContent = DEFAULT_TEXT.content

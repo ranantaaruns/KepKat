@@ -1,3 +1,4 @@
+import { t } from '../i18n'
 import type {
   Clip,
   ColorGrade,
@@ -304,7 +305,7 @@ class GlProgram {
     this.gl = gl
     const compile = (type: number, source: string): WebGLShader => {
       const shader = gl.createShader(type)
-      if (!shader) throw new Error('Shader tidak bisa dibuat.')
+      if (!shader) throw new Error(t('service.webglShader'))
       gl.shaderSource(shader, source)
       gl.compileShader(shader)
       if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
@@ -317,7 +318,7 @@ class GlProgram {
     const vs = compile(gl.VERTEX_SHADER, vertex)
     const fs = compile(gl.FRAGMENT_SHADER, fragment)
     const program = gl.createProgram()
-    if (!program) throw new Error('Program WebGL tidak bisa dibuat.')
+    if (!program) throw new Error(t('service.webglProgram'))
     gl.attachShader(program, vs)
     gl.attachShader(program, fs)
     gl.linkProgram(program)
@@ -426,7 +427,7 @@ export class Compositor {
       premultipliedAlpha: false,
       preserveDrawingBuffer: true,
     })
-    if (!gl) throw new Error('WebGL2 tidak tersedia di browser ini.')
+    if (!gl) throw new Error(t('service.webglUnavailable'))
     this.gl = gl
     this.layerProgram = new GlProgram(gl, VERT_LAYER, FRAG_LAYER)
     this.presentProgram = new GlProgram(gl, VERT_FULL, FRAG_PRESENT)
@@ -449,7 +450,7 @@ export class Compositor {
     const gl = this.gl
     const vao = gl.createVertexArray()
     const buffer = gl.createBuffer()
-    if (!vao || !buffer) throw new Error('Geometri WebGL gagal dibuat.')
+    if (!vao || !buffer) throw new Error(t('service.webglGeometry'))
     gl.bindVertexArray(vao)
     gl.bindBuffer(gl.ARRAY_BUFFER, buffer)
     gl.bufferData(
@@ -480,7 +481,7 @@ export class Compositor {
     const gl = this.gl
     const texture = gl.createTexture()
     const fbo = gl.createFramebuffer()
-    if (!texture || !fbo) throw new Error('Render target gagal dibuat.')
+    if (!texture || !fbo) throw new Error(t('service.webglTarget'))
     gl.bindTexture(gl.TEXTURE_2D, texture)
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, null)
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
@@ -577,7 +578,7 @@ export class Compositor {
     ctx.font = `${config.fontWeight} ${config.fontSize}px ${family}`
     ctx.textBaseline = 'alphabetic'
     const maxWidth = Math.max(80, canvas.width * 0.82)
-    const lines = wrapText(ctx, config.content || 'Teks baru', maxWidth)
+    const lines = wrapText(ctx, config.content || t('defaults.text'), maxWidth)
     const lineHeight = config.fontSize * 1.16
     const maxLineWidth = Math.max(
       ...lines.map((line) => ctx.measureText(line || ' ').width),

@@ -1,5 +1,6 @@
 import { useRef, useState, type DragEvent, type ReactNode } from 'react'
 import clsx from 'clsx'
+import { useT, type TranslationKey } from '../i18n'
 import { useEditorStore } from '../editor/store'
 import { FILTER_PRESETS, STYLE_PACKS, TRANSITION_PRESETS } from '../editor/presets'
 import { formatDuration } from '../services/media'
@@ -12,11 +13,11 @@ interface LeftPanelProps {
   onRemoveMedia: (assetId: string) => void
 }
 
-const panelTabs = [
-  { id: 'media', label: 'Media', icon: 'folder' as const },
-  { id: 'preset', label: 'Preset', icon: 'sparkle' as const },
-  { id: 'text', label: 'Teks', icon: 'text' as const },
-] as const
+const panelTabs: { id: 'media' | 'preset' | 'text'; labelKey: TranslationKey; icon: 'folder' | 'sparkle' | 'text' }[] = [
+  { id: 'media', labelKey: 'left.tab.media', icon: 'folder' },
+  { id: 'preset', labelKey: 'left.tab.preset', icon: 'sparkle' },
+  { id: 'text', labelKey: 'left.tab.text', icon: 'text' },
+]
 
 const TextPresetButton = ({
   label,
@@ -44,6 +45,7 @@ export const LeftPanel = ({
   importLabel,
   onRemoveMedia,
 }: LeftPanelProps): ReactNode => {
+  const t = useT()
   const leftPanel = useEditorStore((state) => state.leftPanel)
   const setLeftPanel = useEditorStore((state) => state.setLeftPanel)
   const media = useEditorStore((state) => state.project.media)
@@ -78,12 +80,12 @@ export const LeftPanel = ({
   }
 
   const closeMobile = (): void => setMobilePanel(null)
-  const targetTitle = selectedClip ? selectedClip.name : 'Pilih klip di timeline'
+  const targetTitle = selectedClip ? selectedClip.name : t('left.selectClip')
 
   return (
     <aside className={clsx('left-panel', mobilePanel === 'left' && 'is-mobile-open')}>
       <div className="panel-head">
-        <div className="tabs" role="tablist" aria-label="Panel kiri">
+        <div className="tabs" role="tablist" aria-label={t('left.panelLabel')}>
           {panelTabs.map((tab) => (
             <button
               key={tab.id}
@@ -94,11 +96,11 @@ export const LeftPanel = ({
               onClick={() => setLeftPanel(tab.id)}
             >
               <Icon name={tab.icon} size={15} />
-              {tab.label}
+              {t(tab.labelKey)}
             </button>
           ))}
         </div>
-        <button className="icon-btn mobile-close" type="button" onClick={closeMobile} aria-label="Tutup panel">
+        <button className="icon-btn mobile-close" type="button" onClick={closeMobile} aria-label={t('left.closePanel')}>
           <Icon name="close" size={17} />
         </button>
       </div>
@@ -137,21 +139,21 @@ export const LeftPanel = ({
               <span className="dropzone-icon">
                 <Icon name={importing ? 'sparkle' : 'upload'} size={22} />
               </span>
-              <strong>{importing ? importLabel : 'Impor media'}</strong>
-              <span>{importing ? 'Menyiapkan berkas…' : 'Tarik file ke sini atau pilih dari perangkat'}</span>
-              <em>Video, audio, dan gambar · diproses lokal</em>
+              <strong>{importing ? importLabel : t('left.importTitle')}</strong>
+              <span>{importing ? t('left.importPreparing') : t('left.importDrop')}</span>
+              <em>{t('left.importHint')}</em>
             </button>
 
             <div className="panel-row">
-              <span className="eyebrow">Pustaka</span>
+              <span className="eyebrow">{t('left.library')}</span>
               <span className="count-chip">{media.length}</span>
             </div>
 
             {media.length === 0 ? (
               <div className="mini-empty">
                 <Icon name="folder" size={22} />
-                <p>Belum ada media.</p>
-                <span>Impor video, musik, atau gambar untuk mulai menyusun.</span>
+                <p>{t('left.emptyTitle')}</p>
+                <span>{t('left.emptyBody')}</span>
               </div>
             ) : (
               <div className="media-list">
@@ -172,13 +174,13 @@ export const LeftPanel = ({
                         <Icon name={asset.kind === 'video' ? 'video' : 'image'} size={24} />
                       )}
                       <span className="media-duration">
-                        {asset.kind === 'image' ? 'GAMBAR' : formatDuration(asset.duration)}
+                        {asset.kind === 'image' ? t('media.imageShort') : formatDuration(asset.duration)}
                       </span>
                     </div>
                     <div className="media-info">
                       <strong title={asset.name}>{asset.name}</strong>
                       <span>
-                        {asset.kind === 'video' ? 'Video' : asset.kind === 'audio' ? 'Audio' : 'Gambar'}
+                        {asset.kind === 'video' ? t('media.video') : asset.kind === 'audio' ? t('media.audio') : t('media.image')}
                         {asset.width > 0 ? ` · ${asset.width}×${asset.height}` : ''}
                       </span>
                     </div>
@@ -186,7 +188,7 @@ export const LeftPanel = ({
                       <button
                         type="button"
                         className="icon-btn"
-                        aria-label={`Tambah ${asset.name} ke timeline`}
+                        aria-label={t('left.addToTimeline', { name: asset.name })}
                         onClick={() => addClipFromMedia(asset.id)}
                       >
                         <Icon name="plus" size={16} />
@@ -194,7 +196,7 @@ export const LeftPanel = ({
                       <button
                         type="button"
                         className="icon-btn danger-hover"
-                        aria-label={`Hapus ${asset.name}`}
+                        aria-label={t('left.removeMedia', { name: asset.name })}
                         onClick={() => onRemoveMedia(asset.id)}
                       >
                         <Icon name="trash" size={15} />
@@ -210,8 +212,8 @@ export const LeftPanel = ({
         {leftPanel === 'preset' ? (
           <div className="panel-section">
             <div className="panel-intro">
-              <span className="eyebrow">Gaya cepat</span>
-              <p>{selectedClip ? targetTitle : 'Pilih klip dulu, lalu terapkan gaya.'}</p>
+              <span className="eyebrow">{t('left.quickStyle')}</span>
+              <p>{selectedClip ? targetTitle : t('left.selectClipFirst')}</p>
             </div>
             <div className="style-grid">
               {STYLE_PACKS.map((pack) => (
@@ -230,15 +232,15 @@ export const LeftPanel = ({
                       <i key={color} style={{ background: color }} />
                     ))}
                   </span>
-                  <strong>{pack.name}</strong>
-                  <span>{pack.note}</span>
+                  <strong>{t(pack.nameKey)}</strong>
+                  <span>{t(pack.noteKey)}</span>
                 </button>
               ))}
             </div>
 
             <div className="panel-row">
-              <span className="eyebrow">Filter</span>
-              <span className="hint-inline">warna & tekstur</span>
+              <span className="eyebrow">{t('left.filters')}</span>
+              <span className="hint-inline">{t('left.filtersHint')}</span>
             </div>
             <div className="filter-grid">
               {FILTER_PRESETS.map((filter) => (
@@ -254,14 +256,14 @@ export const LeftPanel = ({
                       <i key={color} style={{ background: color }} />
                     ))}
                   </span>
-                  <span>{filter.name}</span>
+                  <span>{t(filter.nameKey)}</span>
                 </button>
               ))}
             </div>
 
             <div className="panel-row">
-              <span className="eyebrow">Transisi</span>
-              <span className="hint-inline">masuk</span>
+              <span className="eyebrow">{t('left.transitions')}</span>
+              <span className="hint-inline">{t('left.transitionsHint')}</span>
             </div>
             <div className="transition-grid">
               {TRANSITION_PRESETS.map((transition) => (
@@ -270,11 +272,11 @@ export const LeftPanel = ({
                   type="button"
                   className="transition-chip"
                   disabled={!selectedClip}
-                  title={transition.note}
+                  title={t(transition.noteKey)}
                   onClick={() => selectedClipId && addTransition(selectedClipId, transition.type)}
                 >
                   <span className={`transition-mark type-${transition.type}`} />
-                  <span>{transition.name}</span>
+                  <span>{t(transition.nameKey)}</span>
                 </button>
               ))}
             </div>
@@ -284,25 +286,25 @@ export const LeftPanel = ({
         {leftPanel === 'text' ? (
           <div className="panel-section">
             <div className="panel-intro">
-              <span className="eyebrow">Teks</span>
-              <p>Tambahkan judul atau keterangan. Semua teks bisa dianimasikan di panel kanan.</p>
+              <span className="eyebrow">{t('left.textIntro')}</span>
+              <p>{t('left.textIntroBody')}</p>
             </div>
             <div className="text-preset-grid">
               <TextPresetButton
-                label="Judul"
-                sample="Buka cerita"
+                label={t('textPreset.title')}
+                sample={t('textPreset.titleSample')}
                 patch={{ fontSize: 112, fontWeight: 700, align: 'center' }}
                 onAdd={addTextPreset}
               />
               <TextPresetButton
-                label="Subjudul"
-                sample="Detail kecil"
+                label={t('textPreset.subtitle')}
+                sample={t('textPreset.subtitleSample')}
                 patch={{ fontSize: 58, fontWeight: 500, align: 'center', color: '#d6d0c7' }}
                 onAdd={addTextPreset}
               />
               <TextPresetButton
-                label="Caption"
-                sample="CATATAN 01"
+                label={t('textPreset.caption')}
+                sample={t('textPreset.captionSample')}
                 patch={{
                   fontFamily: 'IBM Plex Mono',
                   fontSize: 38,
@@ -313,23 +315,23 @@ export const LeftPanel = ({
                 onAdd={addTextPreset}
               />
               <TextPresetButton
-                label="Kutipan"
-                sample="“Sedikit lebih pelan.”"
+                label={t('textPreset.quote')}
+                sample={t('textPreset.quoteSample')}
                 patch={{ fontSize: 72, fontWeight: 400, align: 'center', color: '#ffd9c9' }}
                 onAdd={addTextPreset}
               />
             </div>
 
-            <button className="wide-button" type="button" onClick={() => addTextClip('Teks baru')}>
+            <button className="wide-button" type="button" onClick={() => addTextClip(t('common.newText'))}>
               <Icon name="plus" size={16} />
-              Teks kosong
+              {t('left.textEmpty')}
             </button>
 
             <div className="note-card">
               <Icon name="sparkle" size={18} />
               <p>
-                Teks dirender langsung di kanvas. Gunakan tab <strong>Gerak</strong> untuk keyframe
-                dan animasi masuk.
+                {t('left.textNoteBefore')} <strong>{t('inspector.tab.motion')}</strong>{' '}
+                {t('left.textNoteAfter')}
               </p>
             </div>
           </div>

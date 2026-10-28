@@ -1,3 +1,4 @@
+import { t } from '../i18n'
 import type {
   ChromaKey,
   Clip,
@@ -49,7 +50,7 @@ export const DEFAULT_CHROMA: ChromaKey = {
 }
 
 export const DEFAULT_TEXT: TextConfig = {
-  content: 'Teks baru',
+  content: 'New text',
   fontFamily: 'Archivo Variable',
   fontSize: 96,
   fontWeight: 700,
@@ -63,23 +64,51 @@ export const DEFAULT_TEXT: TextConfig = {
 }
 
 const makeTracks = (): Track[] => [
-  { id: uid(), name: 'Teks', kind: 'text', muted: false, hidden: false, locked: false, volume: 1 },
   {
     id: uid(),
-    name: 'Overlay',
+    name: t('trackKind.text'),
+    kind: 'text',
+    muted: false,
+    hidden: false,
+    locked: false,
+    volume: 1,
+  },
+  {
+    id: uid(),
+    name: t('trackKind.overlay'),
     kind: 'overlay',
     muted: false,
     hidden: false,
     locked: false,
     volume: 1,
   },
-  { id: uid(), name: 'Video', kind: 'video', muted: false, hidden: false, locked: false, volume: 1 },
-  { id: uid(), name: 'Audio', kind: 'audio', muted: false, hidden: false, locked: false, volume: 1 },
+  {
+    id: uid(),
+    name: t('trackKind.video'),
+    kind: 'video',
+    muted: false,
+    hidden: false,
+    locked: false,
+    volume: 1,
+  },
+  {
+    id: uid(),
+    name: t('trackKind.audio'),
+    kind: 'audio',
+    muted: false,
+    hidden: false,
+    locked: false,
+    volume: 1,
+  },
 ]
+
+export const defaultTextContent = (): string => t('defaults.text')
+
+export const createDefaultText = (): TextConfig => ({ ...DEFAULT_TEXT, content: defaultTextContent() })
 
 export const createEmptyProject = (): Project => ({
   id: uid(),
-  name: 'Proyek tanpa judul',
+  name: t('defaults.projectName'),
   width: 1920,
   height: 1080,
   fps: 30,
@@ -125,8 +154,12 @@ export const createMediaClip = (asset: MediaAsset, trackId: string, start: numbe
   }
 }
 
-export const createTextClip = (trackId: string, start: number, content = 'Teks baru'): Clip => ({
-  ...baseClip(trackId, 'text', content || 'Teks baru', 4),
+export const createTextClip = (
+  trackId: string,
+  start: number,
+  content = defaultTextContent(),
+): Clip => ({
+  ...baseClip(trackId, 'text', content || defaultTextContent(), 4),
   start,
   sourceOut: 4,
   text: { ...DEFAULT_TEXT, content },

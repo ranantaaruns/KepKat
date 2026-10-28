@@ -1,7 +1,13 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import clsx from 'clsx'
+import { useT, type TranslationKey } from '../i18n'
 import { useEditorStore } from '../editor/store'
-import { aspectFromDimensions, DEFAULT_GRADE, DEFAULT_TEXT } from '../editor/defaults'
+import {
+  aspectFromDimensions,
+  DEFAULT_GRADE,
+  DEFAULT_TEXT,
+  defaultTextContent,
+} from '../editor/defaults'
 import {
   ANIMATED_PROPERTIES,
   EASING_PRESETS,
@@ -33,14 +39,21 @@ import {
   Toggle,
 } from './controls'
 
-const tabMeta: Record<InspectorTab, { label: string; icon: IconName }> = {
-  clip: { label: 'Klip', icon: 'settings' },
-  color: { label: 'Warna', icon: 'sparkle' },
-  chroma: { label: 'Chroma', icon: 'eyedropper' },
-  motion: { label: 'Gerak', icon: 'keyframe' },
-  audio: { label: 'Audio', icon: 'volume' },
-  speed: { label: 'Kecepatan', icon: 'forward' },
-  text: { label: 'Teks', icon: 'text' },
+const tabMeta: Record<InspectorTab, { labelKey: TranslationKey; icon: IconName }> = {
+  clip: { labelKey: 'inspector.tab.clip', icon: 'settings' },
+  color: { labelKey: 'inspector.tab.color', icon: 'sparkle' },
+  chroma: { labelKey: 'inspector.tab.chroma', icon: 'eyedropper' },
+  motion: { labelKey: 'inspector.tab.motion', icon: 'keyframe' },
+  audio: { labelKey: 'inspector.tab.audio', icon: 'volume' },
+  speed: { labelKey: 'inspector.tab.speed', icon: 'forward' },
+  text: { labelKey: 'inspector.tab.text', icon: 'text' },
+}
+
+const clipTypeKey: Record<Clip['type'], TranslationKey> = {
+  video: 'clipType.video',
+  audio: 'clipType.audio',
+  image: 'clipType.image',
+  text: 'clipType.text',
 }
 
 const tabsForClip = (clip: Clip | undefined): InspectorTab[] => {
@@ -60,6 +73,7 @@ const getLocal = (clip: Clip, playhead: number): number =>
   Math.max(0, Math.min(clip.duration, playhead - clip.start))
 
 const ProjectPanel = (): ReactNode => {
+  const t = useT()
   const project = useEditorStore((state) => state.project)
   const setAspect = useEditorStore((state) => state.setAspect)
   const setProjectSettings = useEditorStore((state) => state.setProjectSettings)
@@ -71,16 +85,20 @@ const ProjectPanel = (): ReactNode => {
   return (
     <div className="inspector-body">
       <div className="inspector-hero">
-        <span className="eyebrow">Proyek</span>
+        <span className="eyebrow">{t('inspector.project')}</span>
         <h2>{project.name}</h2>
         <p>
-          {project.clips.length} klip · {project.media.length} media · {formatShortTime(duration)}
+          {t('inspector.projectStats', {
+            clips: project.clips.length,
+            media: project.media.length,
+            duration: formatShortTime(duration),
+          })}
         </p>
       </div>
 
-      <Section title="Format" note="Rasio dan laju bingkai proyek.">
+      <Section title={t('inspector.format')} note={t('inspector.formatNote')}>
         <Segmented
-          label="Rasio"
+          label={t('inspector.ratio')}
           value={aspect}
           options={[
             { value: '16:9', label: '16:9' },
@@ -95,7 +113,7 @@ const ProjectPanel = (): ReactNode => {
           }}
         />
         <SelectField
-          label="Frame rate"
+          label={t('inspector.frameRate')}
           value={String(project.fps)}
           options={[
             { value: '24', label: '24 fps' },
@@ -105,40 +123,40 @@ const ProjectPanel = (): ReactNode => {
           onChange={(value) => setProjectSettings({ fps: Number(value) })}
         />
         <ColorField
-          label="Latar kanvas"
+          label={t('inspector.canvasBackground')}
           value={project.background}
           onChange={(value) => setProjectSettings({ background: value })}
         />
         <div className="stat-grid">
           <div>
-            <span>Resolusi</span>
+            <span>{t('inspector.resolution')}</span>
             <strong>
               {project.width} × {project.height}
             </strong>
           </div>
           <div>
-            <span>Durasi</span>
+            <span>{t('inspector.duration')}</span>
             <strong>{formatShortTime(duration)}</strong>
           </div>
         </div>
       </Section>
 
       <div className="inspector-actions">
-        <button type="button" className="button" onClick={() => addTextClip('Teks baru')}>
+        <button type="button" className="button" onClick={() => addTextClip(t('common.newText'))}>
           <Icon name="text" size={15} />
-          Tambah teks
+          {t('inspector.addText')}
         </button>
         <button
           type="button"
           className="button danger"
           onClick={() => {
-            if (window.confirm('Kosongkan seluruh timeline dan media? Tindakan ini bisa diurungkan.')) {
+            if (window.confirm(t('inspector.clearConfirm'))) {
               clearTimeline()
             }
           }}
         >
           <Icon name="trash" size={15} />
-          Kosongkan
+          {t('inspector.clear')}
         </button>
       </div>
     </div>
@@ -146,6 +164,7 @@ const ProjectPanel = (): ReactNode => {
 }
 
 const TransitionEditor = ({ clip }: { clip: Clip }): ReactNode => {
+  const t = useT()
   const project = useEditorStore((state) => state.project)
   const addTransition = useEditorStore((state) => state.addTransition)
   const removeTransition = useEditorStore((state) => state.removeTransition)
@@ -155,18 +174,19 @@ const TransitionEditor = ({ clip }: { clip: Clip }): ReactNode => {
 
   if (!previous) {
     return (
-      <Section title="Transisi masuk" note="Butuh klip sebelumnya di track yang sama.">
-        <p className="hint-copy">
-          Letakkan klip ini setelah klip lain, lalu kembali ke sini untuk membuat transisi.
-        </p>
+      <Section title={t('inspector.transitionIn')} note={t('inspector.transitionNeedsPrev')}>
+        <p className="hint-copy">{t('inspector.transitionPlace')}</p>
       </Section>
     )
   }
 
   return (
     <Section
-      title="Transisi masuk"
-      note={`Dari ${previous.name} · ${formatSeconds(previous.duration)}`}
+      title={t('inspector.transitionIn')}
+      note={t('inspector.transitionFrom', {
+        name: previous.name,
+        duration: formatSeconds(previous.duration),
+      })}
       action={
         clip.transitionIn ? (
           <button
@@ -174,15 +194,15 @@ const TransitionEditor = ({ clip }: { clip: Clip }): ReactNode => {
             className="text-button danger"
             onClick={() => removeTransition(clip.id)}
           >
-            Hapus
+            {t('common.remove')}
           </button>
         ) : undefined
       }
     >
       <SelectField
-        label="Jenis"
+        label={t('inspector.type')}
         value={clip.transitionIn?.type ?? type}
-        options={TRANSITION_PRESETS.map((item) => ({ value: item.type, label: item.name }))}
+        options={TRANSITION_PRESETS.map((item) => ({ value: item.type, label: t(item.nameKey) }))}
         onChange={(value) => {
           const next = value as TransitionType
           setType(next)
@@ -190,7 +210,7 @@ const TransitionEditor = ({ clip }: { clip: Clip }): ReactNode => {
         }}
       />
       <RangeField
-        label="Durasi transisi"
+        label={t('inspector.transitionDuration')}
         value={clip.transitionIn?.duration ?? Math.min(0.5, clip.duration * 0.4)}
         min={0.12}
         max={Math.min(1.2, clip.duration * 0.45, previous.duration * 0.45)}
@@ -205,7 +225,7 @@ const TransitionEditor = ({ clip }: { clip: Clip }): ReactNode => {
           onClick={() => addTransition(clip.id, type)}
         >
           <Icon name="plus" size={15} />
-          Terapkan transisi
+          {t('inspector.applyTransition')}
         </button>
       ) : null}
     </Section>
@@ -213,6 +233,7 @@ const TransitionEditor = ({ clip }: { clip: Clip }): ReactNode => {
 }
 
 const ClipPanel = ({ clip }: { clip: Clip }): ReactNode => {
+  const t = useT()
   const playhead = useEditorStore((state) => state.playhead)
   const updateClip = useEditorStore((state) => state.updateClip)
   const updateTransform = useEditorStore((state) => state.updateTransform)
@@ -227,11 +248,11 @@ const ClipPanel = ({ clip }: { clip: Clip }): ReactNode => {
   return (
     <div className="inspector-body">
       <div className="clip-heading">
-        <span className={clsx('clip-type-badge', `type-${clip.type}`)}>{clip.type}</span>
+        <span className={clsx('clip-type-badge', `type-${clip.type}`)}>{t(clipTypeKey[clip.type])}</span>
         <input
           className="clip-name-input"
           value={clip.name}
-          aria-label="Nama klip"
+          aria-label={t('inspector.clipName')}
           onChange={(event) =>
             updateClip(clip.id, { name: event.target.value }, { coalesceKey: `clip-name-${clip.id}` })
           }
@@ -239,10 +260,10 @@ const ClipPanel = ({ clip }: { clip: Clip }): ReactNode => {
         <span className="clip-heading-time">{formatShortTime(clip.duration)}</span>
       </div>
 
-      <Section title="Waktu" note="Atur posisi dan durasi klip.">
+      <Section title={t('inspector.time')} note={t('inspector.timeNote')}>
         <div className="field-grid two">
           <NumberField
-            label="Mulai"
+            label={t('inspector.start')}
             value={clip.start}
             min={0}
             step={0.05}
@@ -250,7 +271,7 @@ const ClipPanel = ({ clip }: { clip: Clip }): ReactNode => {
             onChange={(value) => setClipStart(clip.id, value)}
           />
           <NumberField
-            label="Durasi"
+            label={t('inspector.duration')}
             value={clip.duration}
             min={0.1}
             step={0.05}
@@ -259,15 +280,15 @@ const ClipPanel = ({ clip }: { clip: Clip }): ReactNode => {
           />
         </div>
         <div className="clip-range-note">
-          <span>Masuk {formatSeconds(clip.sourceIn)}</span>
-          <span>Keluar {formatSeconds(clip.sourceOut)}</span>
-          <span>Selesai {formatSeconds(clipEnd(clip))}</span>
+          <span>{t('inspector.in')} {formatSeconds(clip.sourceIn)}</span>
+          <span>{t('inspector.out')} {formatSeconds(clip.sourceOut)}</span>
+          <span>{t('inspector.end')} {formatSeconds(clipEnd(clip))}</span>
         </div>
       </Section>
 
       <Section
-        title="Transformasi"
-        note="Nilai diambil dari playhead saat ini."
+        title={t('inspector.transform')}
+        note={t('inspector.transformNote')}
         action={
           <button
             type="button"
@@ -283,23 +304,23 @@ const ClipPanel = ({ clip }: { clip: Clip }): ReactNode => {
               })
             }
           >
-            Reset
+            {t('common.reset')}
           </button>
         }
       >
         <SelectField
-          label="Penyesuaian"
+          label={t('inspector.fit')}
           value={clip.transform.fit}
           options={[
-            { value: 'contain', label: 'Muat di dalam' },
-            { value: 'cover', label: 'Isi penuh' },
+            { value: 'contain', label: t('inspector.contain') },
+            { value: 'cover', label: t('inspector.cover') },
           ]}
           onChange={(value) =>
             updateTransform(clip.id, { fit: value === 'cover' ? 'cover' : 'contain' })
           }
         />
         <RangeField
-          label="Posisi X"
+          label={t('inspector.positionX')}
           value={animatedValue(clip, 'x', local)}
           min={-1400}
           max={1400}
@@ -308,7 +329,7 @@ const ClipPanel = ({ clip }: { clip: Clip }): ReactNode => {
           onChange={(value) => setPropertyValue(clip.id, 'x', value)}
         />
         <RangeField
-          label="Posisi Y"
+          label={t('inspector.positionY')}
           value={animatedValue(clip, 'y', local)}
           min={-1000}
           max={1000}
@@ -317,7 +338,7 @@ const ClipPanel = ({ clip }: { clip: Clip }): ReactNode => {
           onChange={(value) => setPropertyValue(clip.id, 'y', value)}
         />
         <RangeField
-          label="Skala"
+          label={t('inspector.scale')}
           value={animatedValue(clip, 'scale', local)}
           min={0.05}
           max={4}
@@ -326,7 +347,7 @@ const ClipPanel = ({ clip }: { clip: Clip }): ReactNode => {
           onChange={(value) => setPropertyValue(clip.id, 'scale', value)}
         />
         <RangeField
-          label="Rotasi"
+          label={t('inspector.rotation')}
           value={animatedValue(clip, 'rotation', local)}
           min={-360}
           max={360}
@@ -335,7 +356,7 @@ const ClipPanel = ({ clip }: { clip: Clip }): ReactNode => {
           onChange={(value) => setPropertyValue(clip.id, 'rotation', value)}
         />
         <RangeField
-          label="Opacity"
+          label={t('inspector.opacity')}
           value={animatedValue(clip, 'opacity', local)}
           min={0}
           max={1}
@@ -350,15 +371,15 @@ const ClipPanel = ({ clip }: { clip: Clip }): ReactNode => {
       <div className="inspector-actions">
         <button type="button" className="button" onClick={() => duplicateClip(clip.id)}>
           <Icon name="copy" size={15} />
-          Duplikat
+          {t('inspector.duplicate')}
         </button>
         <button type="button" className="button" onClick={splitClip}>
           <Icon name="scissors" size={15} />
-          Pisah
+          {t('inspector.split')}
         </button>
         <button type="button" className="button danger" onClick={() => deleteClip(clip.id)}>
           <Icon name="trash" size={15} />
-          Hapus
+          {t('common.delete')}
         </button>
       </div>
     </div>
@@ -366,6 +387,7 @@ const ClipPanel = ({ clip }: { clip: Clip }): ReactNode => {
 }
 
 const ColorPanel = ({ clip }: { clip: Clip }): ReactNode => {
+  const t = useT()
   const updateGrade = useEditorStore((state) => state.updateGrade)
   const applyFilter = useEditorStore((state) => state.applyFilter)
   const grade = clip.grade
@@ -392,7 +414,7 @@ const ColorPanel = ({ clip }: { clip: Clip }): ReactNode => {
   return (
     <div className="inspector-body">
       <Section
-        title="Filter"
+        title={t('inspector.filter')}
         note={filterName(clip.filterId)}
         action={
           <button
@@ -400,7 +422,7 @@ const ColorPanel = ({ clip }: { clip: Clip }): ReactNode => {
             className="text-button"
             onClick={() => updateGrade(clip.id, { ...DEFAULT_GRADE })}
           >
-            Reset
+            {t('common.reset')}
           </button>
         }
       >
@@ -417,36 +439,37 @@ const ColorPanel = ({ clip }: { clip: Clip }): ReactNode => {
                   <i key={color} style={{ background: color }} />
                 ))}
               </span>
-              <span>{filter.name}</span>
+              <span>{t(filter.nameKey)}</span>
             </button>
           ))}
         </div>
       </Section>
 
-      <Section title="Cahaya" note="Eksposur dan kontras.">
-        {field('exposure', 'Eksposur', -0.5, 0.5)}
-        {field('contrast', 'Kontras', -1, 1)}
-        {field('highlights', 'Highlight', -1, 1)}
-        {field('shadows', 'Shadow', -1, 1)}
+      <Section title={t('inspector.light')} note={t('inspector.lightNote')}>
+        {field('exposure', t('inspector.exposure'), -0.5, 0.5)}
+        {field('contrast', t('inspector.contrast'), -1, 1)}
+        {field('highlights', t('inspector.highlights'), -1, 1)}
+        {field('shadows', t('inspector.shadows'), -1, 1)}
       </Section>
 
-      <Section title="Warna" note="Suhu, tint, dan saturasi.">
-        {field('temperature', 'Suhu', -1, 1)}
-        {field('tint', 'Tint', -1, 1)}
-        {field('saturation', 'Saturasi', -1, 1)}
-        {field('vibrance', 'Vibrance', -1, 1)}
+      <Section title={t('inspector.color')} note={t('inspector.colorNote')}>
+        {field('temperature', t('inspector.temperature'), -1, 1)}
+        {field('tint', t('inspector.tint'), -1, 1)}
+        {field('saturation', t('inspector.saturation'), -1, 1)}
+        {field('vibrance', t('inspector.vibrance'), -1, 1)}
       </Section>
 
-      <Section title="Tekstur" note="Detail dan karakter gambar.">
-        {field('sharpness', 'Ketajaman', 0, 1)}
-        {field('vignette', 'Vignette', 0, 1)}
-        {field('grain', 'Grain', 0, 1)}
+      <Section title={t('inspector.texture')} note={t('inspector.textureNote')}>
+        {field('sharpness', t('inspector.sharpness'), 0, 1)}
+        {field('vignette', t('inspector.vignette'), 0, 1)}
+        {field('grain', t('inspector.grain'), 0, 1)}
       </Section>
     </div>
   )
 }
 
 const ChromaPanel = ({ clip }: { clip: Clip }): ReactNode => {
+  const t = useT()
   const updateChroma = useEditorStore((state) => state.updateChroma)
   const setEyedropper = useEditorStore((state) => state.setEyedropper)
   const eyedropper = useEditorStore((state) => state.eyedropper)
@@ -454,15 +477,15 @@ const ChromaPanel = ({ clip }: { clip: Clip }): ReactNode => {
 
   return (
     <div className="inspector-body">
-      <Section title="Chroma key" note="Hapus warna latar dari klip.">
+      <Section title={t('inspector.chroma')} note={t('inspector.chromaNote')}>
         <Toggle
-          label="Aktifkan chroma key"
-          note="Cocok untuk layar hijau atau biru."
+          label={t('inspector.chromaEnable')}
+          note={t('inspector.chromaEnableNote')}
           checked={chroma.enabled}
           onChange={(value) => updateChroma(clip.id, { enabled: value })}
         />
         <ColorField
-          label="Warna kunci"
+          label={t('inspector.keyColor')}
           value={chroma.color}
           onChange={(value) => updateChroma(clip.id, { color: value })}
         />
@@ -472,10 +495,10 @@ const ChromaPanel = ({ clip }: { clip: Clip }): ReactNode => {
           onClick={() => setEyedropper(!eyedropper)}
         >
           <Icon name="eyedropper" size={15} />
-          {eyedropper ? 'Klik warna di pratinjau' : 'Ambil warna dari pratinjau'}
+          {eyedropper ? t('inspector.pickPreviewActive') : t('inspector.pickPreview')}
         </button>
         <RangeField
-          label="Kemiripan"
+          label={t('inspector.similarity')}
           value={chroma.similarity}
           min={0.01}
           max={1}
@@ -484,7 +507,7 @@ const ChromaPanel = ({ clip }: { clip: Clip }): ReactNode => {
           onChange={(value) => updateChroma(clip.id, { similarity: value })}
         />
         <RangeField
-          label="Kelembutan"
+          label={t('inspector.smoothness')}
           value={chroma.smoothness}
           min={0}
           max={0.5}
@@ -493,7 +516,7 @@ const ChromaPanel = ({ clip }: { clip: Clip }): ReactNode => {
           onChange={(value) => updateChroma(clip.id, { smoothness: value })}
         />
         <RangeField
-          label="Kurangi spill"
+          label={t('inspector.spill')}
           value={chroma.spill}
           min={0}
           max={1}
@@ -504,22 +527,20 @@ const ChromaPanel = ({ clip }: { clip: Clip }): ReactNode => {
       </Section>
       <div className="note-card">
         <Icon name="alert" size={18} />
-        <p>
-          Chroma key bekerja berdasarkan jarak warna RGB. Untuk hasil terbaik, gunakan latar
-          dengan pencahayaan rata dan warna yang jauh dari warna kulit.
-        </p>
+        <p>{t('inspector.chromaHelp')}</p>
       </div>
     </div>
   )
 }
 
 const TextAnimationButtons = ({ clip }: { clip: Clip }): ReactNode => {
+  const t = useT()
   const applyTextAnimation = useEditorStore((state) => state.applyTextAnimation)
-  const presets: { id: TextAnimationPreset; label: string }[] = [
-    { id: 'fade', label: 'Fade' },
-    { id: 'slide', label: 'Naik' },
-    { id: 'pop', label: 'Pop' },
-    { id: 'zoom', label: 'Zoom' },
+  const presets: { id: TextAnimationPreset; labelKey: TranslationKey }[] = [
+    { id: 'fade', labelKey: 'textAnimation.fade' },
+    { id: 'slide', labelKey: 'textAnimation.rise' },
+    { id: 'pop', labelKey: 'textAnimation.pop' },
+    { id: 'zoom', labelKey: 'textAnimation.zoom' },
   ]
   return (
     <div className="animation-grid">
@@ -531,7 +552,7 @@ const TextAnimationButtons = ({ clip }: { clip: Clip }): ReactNode => {
           onClick={() => applyTextAnimation(clip.id, preset.id)}
         >
           <span className={`animation-mark anim-${preset.id}`} />
-          {preset.label}
+          {t(preset.labelKey)}
         </button>
       ))}
     </div>
@@ -539,6 +560,7 @@ const TextAnimationButtons = ({ clip }: { clip: Clip }): ReactNode => {
 }
 
 const MotionPanel = ({ clip }: { clip: Clip }): ReactNode => {
+  const t = useT()
   const playhead = useEditorStore((state) => state.playhead)
   const setPlayhead = useEditorStore((state) => state.setPlayhead)
   const addKeyframe = useEditorStore((state) => state.addKeyframe)
@@ -558,12 +580,12 @@ const MotionPanel = ({ clip }: { clip: Clip }): ReactNode => {
   return (
     <div className="inspector-body">
       {clip.type === 'text' ? (
-        <Section title="Animasi teks" note="Preset cepat untuk teks masuk.">
+        <Section title={t('inspector.textAnimation')} note={t('inspector.textAnimationNote')}>
           <TextAnimationButtons clip={clip} />
         </Section>
       ) : null}
 
-      <Section title="Keyframe" note="Animasi properti sepanjang klip.">
+      <Section title={t('inspector.keyframes')} note={t('inspector.keyframesNote')}>
         <div className="motion-properties">
           {ANIMATED_PROPERTIES.filter(
             (item) => item !== 'volume' || clip.type === 'video' || clip.type === 'audio',
@@ -581,7 +603,7 @@ const MotionPanel = ({ clip }: { clip: Clip }): ReactNode => {
 
         <div className="keyframe-current">
           <div>
-            <span className="eyebrow">Nilai saat ini</span>
+            <span className="eyebrow">{t('inspector.currentValue')}</span>
             <strong>
               {current.toFixed(property === 'opacity' ? 2 : property === 'x' || property === 'y' ? 0 : 2)}
               {propertyUnit(property)}
@@ -590,8 +612,8 @@ const MotionPanel = ({ clip }: { clip: Clip }): ReactNode => {
           <button
             type="button"
             className={clsx('keyframe-toggle', atPlayhead && 'is-active')}
-            aria-label={atPlayhead ? 'Hapus keyframe di playhead' : 'Tambah keyframe di playhead'}
-            title={atPlayhead ? 'Hapus keyframe' : 'Tambah keyframe'}
+            aria-label={atPlayhead ? t('inspector.removeKeyframeAt') : t('inspector.addKeyframeAt')}
+            title={atPlayhead ? t('inspector.removeKeyframe') : t('inspector.addKeyframe')}
             onClick={() => {
               if (atPlayhead) removeKeyframe(clip.id, property, atPlayhead.id)
               else addKeyframe(clip.id, property)
@@ -617,7 +639,7 @@ const MotionPanel = ({ clip }: { clip: Clip }): ReactNode => {
 
         <div className="keyframe-list">
           {list.length === 0 ? (
-            <p className="hint-copy">Belum ada keyframe. Tekan ikon berlian untuk menambah.</p>
+            <p className="hint-copy">{t('inspector.noKeyframes')}</p>
           ) : (
             [...list]
               .sort((a, b) => a.time - b.time)
@@ -636,7 +658,7 @@ const MotionPanel = ({ clip }: { clip: Clip }): ReactNode => {
                   </button>
                   <span className="keyframe-value">{keyframe.value.toFixed(2)}</span>
                   <select
-                    aria-label="Easing keyframe"
+                    aria-label={t('inspector.keyframeEasing')}
                     value={easingMatch(keyframe.easing)}
                     onChange={(event) => {
                       const preset = EASING_PRESETS.find((item) => item.id === event.target.value)
@@ -645,14 +667,14 @@ const MotionPanel = ({ clip }: { clip: Clip }): ReactNode => {
                   >
                     {EASING_PRESETS.map((preset) => (
                       <option key={preset.id} value={preset.id}>
-                        {preset.name}
+                        {t(preset.nameKey)}
                       </option>
                     ))}
                   </select>
                   <button
                     type="button"
                     className="icon-btn tiny danger-hover"
-                    aria-label="Hapus keyframe"
+                    aria-label={t('inspector.removeKeyframe')}
                     onClick={() => removeKeyframe(clip.id, property, keyframe.id)}
                   >
                     <Icon name="close" size={12} />
@@ -667,6 +689,7 @@ const MotionPanel = ({ clip }: { clip: Clip }): ReactNode => {
 }
 
 const AudioPanel = ({ clip }: { clip: Clip }): ReactNode => {
+  const t = useT()
   const project = useEditorStore((state) => state.project)
   const playhead = useEditorStore((state) => state.playhead)
   const setPropertyValue = useEditorStore((state) => state.setPropertyValue)
@@ -682,19 +705,19 @@ const AudioPanel = ({ clip }: { clip: Clip }): ReactNode => {
 
   return (
     <div className="inspector-body">
-      <Section title="Level audio" note={clip.name}>
+      <Section title={t('inspector.audioLevel')} note={clip.name}>
         <div className="wave audio-wave">
           {bars.map((value, index) => (
             <span key={index} style={{ height: `${Math.round(value * 100)}%` }} />
           ))}
         </div>
         <Toggle
-          label="Bisukan klip"
+          label={t('inspector.muteClip')}
           checked={clip.muted}
           onChange={() => toggleMute(clip.id)}
         />
         <RangeField
-          label="Volume"
+          label={t('inspector.volume')}
           value={animatedValue(clip, 'volume', local)}
           min={0}
           max={2}
@@ -703,7 +726,7 @@ const AudioPanel = ({ clip }: { clip: Clip }): ReactNode => {
           onChange={(value) => setPropertyValue(clip.id, 'volume', value)}
         />
         <RangeField
-          label="Fade masuk"
+          label={t('inspector.fadeIn')}
           value={clip.fadeIn}
           min={0}
           max={Math.max(0.1, clip.duration / 2)}
@@ -712,7 +735,7 @@ const AudioPanel = ({ clip }: { clip: Clip }): ReactNode => {
           onChange={(value) => setFade(clip.id, 'in', value)}
         />
         <RangeField
-          label="Fade keluar"
+          label={t('inspector.fadeOut')}
           value={clip.fadeOut}
           min={0}
           max={Math.max(0.1, clip.duration / 2)}
@@ -723,14 +746,14 @@ const AudioPanel = ({ clip }: { clip: Clip }): ReactNode => {
         {canDetach ? (
           <button type="button" className="wide-button" onClick={() => detachAudio(clip.id)}>
             <Icon name="audio" size={15} />
-            Pisahkan audio dari video
+            {t('inspector.detachAudio')}
           </button>
         ) : null}
       </Section>
       {clip.type === 'video' && clip.muted ? (
         <div className="note-card">
           <Icon name="volume" size={18} />
-          <p>Audio video ini dibisukan. Gunakan tombol di atas untuk mengaktifkan kembali.</p>
+          <p>{t('inspector.mutedNote')}</p>
         </div>
       ) : null}
     </div>
@@ -738,14 +761,15 @@ const AudioPanel = ({ clip }: { clip: Clip }): ReactNode => {
 }
 
 const SpeedPanel = ({ clip }: { clip: Clip }): ReactNode => {
+  const t = useT()
   const setSpeed = useEditorStore((state) => state.setSpeed)
   const setPreservePitch = useEditorStore((state) => state.setPreservePitch)
   const source = sourceDuration(clip)
   return (
     <div className="inspector-body">
-      <Section title="Kecepatan" note="Ubah tempo tanpa memotong klip.">
+      <Section title={t('inspector.speed')} note={t('inspector.speedNote')}>
         <Segmented
-          label="Preset"
+          label={t('inspector.preset')}
           value={String(clip.speed)}
           options={[
             { value: '0.5', label: '0.5×' },
@@ -757,7 +781,7 @@ const SpeedPanel = ({ clip }: { clip: Clip }): ReactNode => {
           onChange={(value) => setSpeed(clip.id, Number(value))}
         />
         <RangeField
-          label="Kecepatan"
+          label={t('inspector.speed')}
           value={clip.speed}
           min={0.25}
           max={4}
@@ -766,18 +790,18 @@ const SpeedPanel = ({ clip }: { clip: Clip }): ReactNode => {
           onChange={(value) => setSpeed(clip.id, value)}
         />
         <Toggle
-          label="Pertahankan nada"
-          note="Kurangi perubahan pitch saat audio dipercepat."
+          label={t('inspector.keepPitch')}
+          note={t('inspector.keepPitchNote')}
           checked={clip.preservePitch}
           onChange={(value) => setPreservePitch(clip.id, value)}
         />
         <div className="stat-grid">
           <div>
-            <span>Sumber</span>
+            <span>{t('inspector.source')}</span>
             <strong>{formatSeconds(source)}</strong>
           </div>
           <div>
-            <span>Hasil</span>
+            <span>{t('inspector.result')}</span>
             <strong>{formatSeconds(clip.duration)}</strong>
           </div>
         </div>
@@ -787,20 +811,21 @@ const SpeedPanel = ({ clip }: { clip: Clip }): ReactNode => {
 }
 
 const TextPanel = ({ clip }: { clip: Clip }): ReactNode => {
+  const t = useT()
   const updateText = useEditorStore((state) => state.updateText)
   const text = clip.text ?? DEFAULT_TEXT
   return (
     <div className="inspector-body">
       <Section
-        title="Isi teks"
-        note="Teks mendukung beberapa baris."
+        title={t('inspector.textContent')}
+        note={t('inspector.textContentNote')}
         action={
           <button
             type="button"
             className="text-button"
-            onClick={() => updateText(clip.id, { ...DEFAULT_TEXT })}
+            onClick={() => updateText(clip.id, { ...DEFAULT_TEXT, content: defaultTextContent() })}
           >
-            Reset
+            {t('common.reset')}
           </button>
         }
       >
@@ -808,11 +833,11 @@ const TextPanel = ({ clip }: { clip: Clip }): ReactNode => {
           className="text-area"
           value={text.content}
           rows={3}
-          aria-label="Isi teks"
+          aria-label={t('inspector.textContent')}
           onChange={(event) => updateText(clip.id, { content: event.target.value })}
         />
         <SelectField
-          label="Font"
+          label={t('inspector.font')}
           value={text.fontFamily}
           options={[
             { value: 'Archivo Variable', label: 'Archivo' },
@@ -826,7 +851,7 @@ const TextPanel = ({ clip }: { clip: Clip }): ReactNode => {
         />
         <div className="field-grid two">
           <NumberField
-            label="Ukuran"
+            label={t('inspector.size')}
             value={text.fontSize}
             min={12}
             max={360}
@@ -834,42 +859,42 @@ const TextPanel = ({ clip }: { clip: Clip }): ReactNode => {
             onChange={(value) => updateText(clip.id, { fontSize: value })}
           />
           <SelectField
-            label="Bobot"
+            label={t('inspector.weight')}
             value={String(text.fontWeight)}
             options={[
-              { value: '400', label: 'Regular' },
-              { value: '500', label: 'Medium' },
-              { value: '600', label: 'Semibold' },
-              { value: '700', label: 'Bold' },
+              { value: '400', label: t('inspector.weightRegular') },
+              { value: '500', label: t('inspector.weightMedium') },
+              { value: '600', label: t('inspector.weightSemibold') },
+              { value: '700', label: t('inspector.weightBold') },
             ]}
             onChange={(value) => updateText(clip.id, { fontWeight: Number(value) })}
           />
         </div>
         <Segmented
-          label="Perataan"
+          label={t('inspector.align')}
           value={text.align}
           options={[
-            { value: 'left', label: 'Kiri' },
-            { value: 'center', label: 'Tengah' },
-            { value: 'right', label: 'Kanan' },
+            { value: 'left', label: t('inspector.left') },
+            { value: 'center', label: t('inspector.center') },
+            { value: 'right', label: t('inspector.right') },
           ]}
           onChange={(value) => updateText(clip.id, { align: value })}
         />
       </Section>
 
-      <Section title="Warna dan latar">
+      <Section title={t('inspector.colorAndBackground')}>
         <ColorField
-          label="Warna teks"
+          label={t('inspector.textColor')}
           value={text.color}
           onChange={(value) => updateText(clip.id, { color: value })}
         />
         <ColorField
-          label="Warna garis"
+          label={t('inspector.strokeColor')}
           value={text.strokeColor}
           onChange={(value) => updateText(clip.id, { strokeColor: value })}
         />
         <RangeField
-          label="Tebal garis"
+          label={t('inspector.strokeWidth')}
           value={text.strokeWidth}
           min={0}
           max={24}
@@ -878,12 +903,12 @@ const TextPanel = ({ clip }: { clip: Clip }): ReactNode => {
           onChange={(value) => updateText(clip.id, { strokeWidth: value })}
         />
         <ColorField
-          label="Warna latar"
+          label={t('inspector.backgroundColor')}
           value={text.backgroundColor}
           onChange={(value) => updateText(clip.id, { backgroundColor: value })}
         />
         <RangeField
-          label="Opacity latar"
+          label={t('inspector.backgroundOpacity')}
           value={text.backgroundOpacity}
           min={0}
           max={1}
@@ -892,7 +917,7 @@ const TextPanel = ({ clip }: { clip: Clip }): ReactNode => {
           onChange={(value) => updateText(clip.id, { backgroundOpacity: value })}
         />
         <RangeField
-          label="Padding"
+          label={t('inspector.padding')}
           value={text.padding}
           min={0}
           max={96}
@@ -902,7 +927,7 @@ const TextPanel = ({ clip }: { clip: Clip }): ReactNode => {
         />
       </Section>
 
-      <Section title="Animasi" note="Terapkan gerak masuk cepat.">
+      <Section title={t('inspector.animation')} note={t('inspector.animationNote')}>
         <TextAnimationButtons clip={clip} />
       </Section>
     </div>
@@ -910,6 +935,7 @@ const TextPanel = ({ clip }: { clip: Clip }): ReactNode => {
 }
 
 export const Inspector = (): ReactNode => {
+  const t = useT()
   const selectedClip = useEditorStore((state) =>
     state.project.clips.find((item) => item.id === state.selectedClipId),
   )
@@ -930,13 +956,13 @@ export const Inspector = (): ReactNode => {
     <aside className={clsx('inspector', mobilePanel === 'right' && 'is-mobile-open')}>
       <div className="inspector-head">
         <div>
-          <span className="eyebrow">Inspektur</span>
-          <strong>{selectedClip ? selectedClip.name : 'Pengaturan proyek'}</strong>
+          <span className="eyebrow">{t('inspector.eyebrow')}</span>
+          <strong>{selectedClip ? selectedClip.name : t('inspector.projectSettings')}</strong>
         </div>
         <button
           type="button"
           className="icon-btn mobile-close"
-          aria-label="Tutup inspektur"
+          aria-label={t('inspector.close')}
           onClick={() => setMobilePanel(null)}
         >
           <Icon name="close" size={17} />
@@ -944,7 +970,7 @@ export const Inspector = (): ReactNode => {
       </div>
 
       {selectedClip ? (
-        <div className="tabs inspector-tabs" role="tablist" aria-label="Pengaturan klip">
+        <div className="tabs inspector-tabs" role="tablist" aria-label={t('inspector.clipSettings')}>
           {tabs.map((tab) => (
             <button
               key={tab}
@@ -955,7 +981,7 @@ export const Inspector = (): ReactNode => {
               onClick={() => setInspectorTab(tab)}
             >
               <Icon name={tabMeta[tab].icon} size={14} />
-              {tabMeta[tab].label}
+              {t(tabMeta[tab].labelKey)}
             </button>
           ))}
         </div>

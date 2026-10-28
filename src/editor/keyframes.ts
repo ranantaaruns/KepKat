@@ -1,3 +1,4 @@
+import { t, type TranslationKey } from '../i18n'
 import type { AnimatedProperty, Clip, Keyframe, KeyframeMap } from './types'
 import { uid } from './defaults'
 
@@ -9,12 +10,12 @@ export const EASE_OUT: Easing = [0, 0, 0.58, 1]
 export const LINEAR: Easing = [0, 0, 1, 1]
 export const SNAP: Easing = [0.34, 1.56, 0.64, 1]
 
-export const EASING_PRESETS: { id: string; name: string; easing: Easing }[] = [
-  { id: 'linear', name: 'Linear', easing: LINEAR },
-  { id: 'smooth', name: 'Halus', easing: EASE },
-  { id: 'in', name: 'Masuk', easing: EASE_IN },
-  { id: 'out', name: 'Keluar', easing: EASE_OUT },
-  { id: 'snap', name: 'Pantul', easing: SNAP },
+export const EASING_PRESETS: { id: string; nameKey: TranslationKey; easing: Easing }[] = [
+  { id: 'linear', nameKey: 'easing.linear', easing: LINEAR },
+  { id: 'smooth', nameKey: 'easing.smooth', easing: EASE },
+  { id: 'in', nameKey: 'easing.in', easing: EASE_IN },
+  { id: 'out', nameKey: 'easing.out', easing: EASE_OUT },
+  { id: 'snap', nameKey: 'easing.snap', easing: SNAP },
 ]
 
 export const ANIMATED_PROPERTIES: AnimatedProperty[] = [
@@ -26,22 +27,16 @@ export const ANIMATED_PROPERTIES: AnimatedProperty[] = [
   'volume',
 ]
 
-export const propertyLabel = (property: AnimatedProperty): string => {
-  switch (property) {
-    case 'x':
-      return 'Posisi X'
-    case 'y':
-      return 'Posisi Y'
-    case 'scale':
-      return 'Skala'
-    case 'rotation':
-      return 'Rotasi'
-    case 'opacity':
-      return 'Opacity'
-    default:
-      return 'Volume'
-  }
+const PROPERTY_KEYS: Record<AnimatedProperty, TranslationKey> = {
+  x: 'property.x',
+  y: 'property.y',
+  scale: 'property.scale',
+  rotation: 'property.rotation',
+  opacity: 'property.opacity',
+  volume: 'property.volume',
 }
+
+export const propertyLabel = (property: AnimatedProperty): string => t(PROPERTY_KEYS[property])
 
 export const propertyUnit = (property: AnimatedProperty): string => {
   if (property === 'x' || property === 'y') return 'px'

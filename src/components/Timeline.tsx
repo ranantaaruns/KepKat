@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import clsx from 'clsx'
+import { useT } from '../i18n'
 import { useEditorStore } from '../editor/store'
 import {
   clipsOnTrack,
@@ -58,6 +59,7 @@ const waveBars = (clip: Clip): number[] => {
 }
 
 const TrackHeader = ({ track }: { track: Track }): ReactNode => {
+  const t = useT()
   const updateTrack = useEditorStore((state) => state.updateTrack)
   return (
     <div className="track-head">
@@ -72,7 +74,7 @@ const TrackHeader = ({ track }: { track: Track }): ReactNode => {
         <button
           type="button"
           className={clsx('track-control', track.hidden && 'is-off')}
-          aria-label={track.hidden ? `Tampilkan ${track.name}` : `Sembunyikan ${track.name}`}
+          aria-label={track.hidden ? t('track.show', { name: track.name }) : t('track.hide', { name: track.name })}
           onClick={() => updateTrack(track.id, { hidden: !track.hidden })}
         >
           <Icon name={track.hidden ? 'eyeOff' : 'eye'} size={14} />
@@ -80,7 +82,7 @@ const TrackHeader = ({ track }: { track: Track }): ReactNode => {
         <button
           type="button"
           className={clsx('track-control', track.muted && 'is-off')}
-          aria-label={track.muted ? `Bunyikan ${track.name}` : `Bisukan ${track.name}`}
+          aria-label={track.muted ? t('track.unmute', { name: track.name }) : t('track.mute', { name: track.name })}
           onClick={() => updateTrack(track.id, { muted: !track.muted })}
         >
           <Icon name={track.muted ? 'mute' : 'volume'} size={14} />
@@ -88,7 +90,7 @@ const TrackHeader = ({ track }: { track: Track }): ReactNode => {
         <button
           type="button"
           className={clsx('track-control', track.locked && 'is-locked')}
-          aria-label={track.locked ? `Buka kunci ${track.name}` : `Kunci ${track.name}`}
+          aria-label={track.locked ? t('track.unlock', { name: track.name }) : t('track.lock', { name: track.name })}
           onClick={() => updateTrack(track.id, { locked: !track.locked })}
         >
           <Icon name={track.locked ? 'lock' : 'unlock'} size={13} />
@@ -111,6 +113,7 @@ const ClipBlock = ({
   locked: boolean
   onDrag: (event: ReactPointerEvent, mode: DragMode, clip: Clip) => void
 }): ReactNode => {
+  const t = useT()
   const selectClip = useEditorStore((state) => state.selectClip)
   const project = useEditorStore((state) => state.project)
   const asset = findMedia(project, clip.mediaId)
@@ -161,9 +164,9 @@ const ClipBlock = ({
         <strong>{clip.type === 'text' ? clip.text?.content || clip.name : clip.name}</strong>
       </span>
       <span className="clip-duration">{formatShortTime(clip.duration)}</span>
-      {clip.transitionIn ? <span className="clip-transition" title="Transisi masuk" /> : null}
+      {clip.transitionIn ? <span className="clip-transition" title={t('timeline.transitionIn')} /> : null}
       {clip.type === 'video' && clip.muted ? (
-        <span className="clip-muted" title="Audio dibisukan">
+        <span className="clip-muted" title={t('timeline.audioMuted')}>
           <Icon name="mute" size={11} />
         </span>
       ) : null}
@@ -172,7 +175,7 @@ const ClipBlock = ({
           <button
             type="button"
             className="trim-handle left"
-            aria-label="Ubah awal klip"
+            aria-label={t('timeline.trimStart')}
             onPointerDown={(event) => {
               event.stopPropagation()
               onDrag(event, 'trim-left', clip)
@@ -181,7 +184,7 @@ const ClipBlock = ({
           <button
             type="button"
             className="trim-handle right"
-            aria-label="Ubah akhir klip"
+            aria-label={t('timeline.trimEnd')}
             onPointerDown={(event) => {
               event.stopPropagation()
               onDrag(event, 'trim-right', clip)
@@ -194,6 +197,7 @@ const ClipBlock = ({
 }
 
 export const Timeline = ({ onImportClick }: TimelineProps): ReactNode => {
+  const t = useT()
   const project = useEditorStore((state) => state.project)
   const selectedClipId = useEditorStore((state) => state.selectedClipId)
   const playhead = useEditorStore((state) => state.playhead)
@@ -356,23 +360,23 @@ export const Timeline = ({ onImportClick }: TimelineProps): ReactNode => {
   }, [playhead, isPlaying, pps])
 
   return (
-    <section className="timeline" aria-label="Timeline">
+    <section className="timeline" aria-label={t('timeline.label')}>
       <div className="timeline-toolbar">
         <div className="toolbar-group">
           <button type="button" className="button compact" onClick={onImportClick}>
             <Icon name="upload" size={15} />
-            Media
+            {t('timeline.media')}
           </button>
-          <button type="button" className="button compact" onClick={() => addTextClip('Teks baru')}>
+          <button type="button" className="button compact" onClick={() => addTextClip(t('common.newText'))}>
             <Icon name="text" size={15} />
-            Teks
+            {t('timeline.text')}
           </button>
           <span className="toolbar-divider" />
           <button
             type="button"
             className="icon-btn"
-            title="Pisah di playhead"
-            aria-label="Pisah klip di playhead"
+            title={t('timeline.split')}
+            aria-label={t('timeline.splitAria')}
             disabled={!selectedClip}
             onClick={splitClip}
           >
@@ -381,8 +385,8 @@ export const Timeline = ({ onImportClick }: TimelineProps): ReactNode => {
           <button
             type="button"
             className="icon-btn"
-            title="Duplikat klip"
-            aria-label="Duplikat klip"
+            title={t('timeline.duplicate')}
+            aria-label={t('timeline.duplicate')}
             disabled={!selectedClip}
             onClick={() => duplicateClip()}
           >
@@ -391,8 +395,8 @@ export const Timeline = ({ onImportClick }: TimelineProps): ReactNode => {
           <button
             type="button"
             className="icon-btn danger-hover"
-            title="Hapus klip"
-            aria-label="Hapus klip"
+            title={t('timeline.delete')}
+            aria-label={t('timeline.delete')}
             disabled={!selectedClip}
             onClick={() => deleteClip()}
           >
@@ -400,20 +404,20 @@ export const Timeline = ({ onImportClick }: TimelineProps): ReactNode => {
           </button>
           <DropdownMenu.Root open={trackMenuOpen} onOpenChange={setTrackMenuOpen}>
             <DropdownMenu.Trigger asChild>
-              <button type="button" className="icon-btn" aria-label="Tambah track" title="Tambah track">
+              <button type="button" className="icon-btn" aria-label={t('timeline.addTrack')} title={t('timeline.addTrack')}>
                 <Icon name="plus" size={17} />
               </button>
             </DropdownMenu.Trigger>
             <DropdownMenu.Portal>
               <DropdownMenu.Content className="menu-content" sideOffset={8} align="start">
                 <DropdownMenu.Item className="menu-item" onSelect={() => addTrack('text')}>
-                  <Icon name="text" size={15} /> Track teks
+                  <Icon name="text" size={15} /> {t('timeline.trackText')}
                 </DropdownMenu.Item>
                 <DropdownMenu.Item className="menu-item" onSelect={() => addTrack('overlay')}>
-                  <Icon name="layers" size={15} /> Track overlay
+                  <Icon name="layers" size={15} /> {t('timeline.trackOverlay')}
                 </DropdownMenu.Item>
                 <DropdownMenu.Item className="menu-item" onSelect={() => addTrack('audio')}>
-                  <Icon name="audio" size={15} /> Track audio
+                  <Icon name="audio" size={15} /> {t('timeline.trackAudio')}
                 </DropdownMenu.Item>
               </DropdownMenu.Content>
             </DropdownMenu.Portal>
@@ -425,8 +429,8 @@ export const Timeline = ({ onImportClick }: TimelineProps): ReactNode => {
           <button
             type="button"
             className={clsx('icon-btn', snapping && 'is-active')}
-            aria-label={snapping ? 'Matikan magnet' : 'Aktifkan magnet'}
-            title="Magnet timeline"
+            aria-label={snapping ? t('timeline.magnetOff') : t('timeline.magnetOn')}
+            title={t('timeline.magnet')}
             onClick={toggleSnapping}
           >
             <Icon name="magnet" size={16} />
@@ -434,7 +438,7 @@ export const Timeline = ({ onImportClick }: TimelineProps): ReactNode => {
           <button
             type="button"
             className="icon-btn small"
-            aria-label="Perkecil timeline"
+            aria-label={t('timeline.zoomOut')}
             onClick={() => setPxPerSecond(pps - 12)}
           >
             <Icon name="zoomOut" size={15} />
@@ -446,13 +450,13 @@ export const Timeline = ({ onImportClick }: TimelineProps): ReactNode => {
             max={180}
             step={1}
             value={pps}
-            aria-label="Zoom timeline"
+            aria-label={t('timeline.zoom')}
             onChange={(event) => setPxPerSecond(Number(event.target.value))}
           />
           <button
             type="button"
             className="icon-btn small"
-            aria-label="Perbesar timeline"
+            aria-label={t('timeline.zoomIn')}
             onClick={() => setPxPerSecond(pps + 12)}
           >
             <Icon name="zoomIn" size={15} />
@@ -503,10 +507,10 @@ export const Timeline = ({ onImportClick }: TimelineProps): ReactNode => {
                   {items.length === 0 ? (
                     <span className="lane-empty">
                       {track.kind === 'text'
-                        ? 'Teks muncul di sini'
+                        ? t('timeline.laneText')
                         : track.kind === 'audio'
-                          ? 'Tambahkan audio dari pustaka'
-                          : 'Tambahkan klip dari pustaka'}
+                          ? t('timeline.laneAudio')
+                          : t('timeline.laneMedia')}
                     </span>
                   ) : null}
                 </div>
@@ -518,7 +522,7 @@ export const Timeline = ({ onImportClick }: TimelineProps): ReactNode => {
             <button
               type="button"
               className="playhead-handle"
-              aria-label="Geser playhead"
+              aria-label={t('timeline.playhead')}
               onPointerDown={beginScrub}
             />
             <span className="playhead-line" />

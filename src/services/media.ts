@@ -1,3 +1,4 @@
+import { t } from '../i18n'
 import { uid } from '../editor/defaults'
 import type { MediaAsset, MediaKind } from '../editor/types'
 
@@ -35,7 +36,7 @@ const waitFor = <T extends HTMLElement>(
   new Promise((resolve, reject) => {
     const timer = window.setTimeout(() => {
       cleanup()
-      reject(new Error('Media terlalu lama dimuat atau formatnya tidak didukung browser.'))
+      reject(new Error(t('service.mediaTimeout')))
     }, timeout)
     const onDone = () => {
       cleanup()
@@ -43,7 +44,7 @@ const waitFor = <T extends HTMLElement>(
     }
     const onError = () => {
       cleanup()
-      reject(new Error('Media tidak bisa dibaca. Coba format WebM, MP4, MP3, WAV, PNG, atau JPG.'))
+      reject(new Error(t('service.mediaRead')))
     }
     const cleanup = () => {
       window.clearTimeout(timer)
@@ -173,7 +174,7 @@ export const buildWaveform = async (blob: Blob, bars = 72): Promise<number[]> =>
 export const createMediaAsset = async (file: File): Promise<MediaAsset> => {
   const kind = mediaKind(file)
   if (!kind) {
-    throw new Error('Format file belum didukung. Gunakan video, audio, atau gambar.')
+    throw new Error(t('service.unsupportedFile'))
   }
   const url = URL.createObjectURL(file)
   try {

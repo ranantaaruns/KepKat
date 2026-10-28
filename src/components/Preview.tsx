@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type PointerEvent, type ReactNode } from 'react'
 import clsx from 'clsx'
+import { useT, t as translate } from '../i18n'
 import { useEditorStore } from '../editor/store'
 import { formatTimecode, projectDuration } from '../editor/timelineMath'
 import { Compositor } from '../services/compositor'
@@ -14,6 +15,7 @@ const rgbToHex = (r: number, g: number, b: number): string =>
   `#${[r, g, b].map((value) => Math.round(value).toString(16).padStart(2, '0')).join('')}`
 
 export const Preview = ({ onImportClick, onNotice }: PreviewProps): ReactNode => {
+  const t = useT()
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const stageRef = useRef<HTMLDivElement>(null)
   const shellRef = useRef<HTMLDivElement>(null)
@@ -55,7 +57,7 @@ export const Preview = ({ onImportClick, onNotice }: PreviewProps): ReactNode =>
         compositorRef.current = null
       }
     } catch (reason) {
-      const message = reason instanceof Error ? reason.message : 'Pratinjau tidak bisa dimulai.'
+      const message = reason instanceof Error ? reason.message : translate('preview.errorFallback')
       queueMicrotask(() => setError(message))
       return
     }
@@ -111,7 +113,7 @@ export const Preview = ({ onImportClick, onNotice }: PreviewProps): ReactNode =>
     const hex = rgbToHex(pixel[0], pixel[1], pixel[2])
     if (selectedClipId) {
       updateChroma(selectedClipId, { color: hex, enabled: true })
-      onNotice(`Warna kunci diambil: ${hex.toUpperCase()}`)
+      onNotice(t('preview.pickNotice', { hex: hex.toUpperCase() }))
     }
     setEyedropper(false)
   }
@@ -122,10 +124,10 @@ export const Preview = ({ onImportClick, onNotice }: PreviewProps): ReactNode =>
   }
 
   return (
-    <section className="preview-panel" aria-label="Pratinjau video">
+    <section className="preview-panel" aria-label={t('preview.panelLabel')}>
       <div className="preview-head">
         <div>
-          <span className="eyebrow">Pratinjau</span>
+          <span className="eyebrow">{t('preview.eyebrow')}</span>
           <strong>{projectName}</strong>
         </div>
         <div className="preview-meta">
@@ -144,33 +146,33 @@ export const Preview = ({ onImportClick, onNotice }: PreviewProps): ReactNode =>
             className="preview-canvas"
             onPointerDown={pickColor}
             onDoubleClick={togglePlay}
-            aria-label="Kanvas pratinjau"
+            aria-label={t('preview.canvasLabel')}
           />
           {error ? (
             <div className="preview-empty">
               <Icon name="alert" size={24} />
-              <strong>Pratinjau gagal</strong>
+              <strong>{t('preview.failed')}</strong>
               <span>{error}</span>
             </div>
           ) : null}
           {!error && clipCount === 0 ? (
             <div className="preview-empty">
-              <span className="empty-kicker">KANVAS KOSONG</span>
-              <strong>Mulai dari satu potongan.</strong>
-              <p>Impor video, gambar, atau musik. Semua diproses di perangkat ini.</p>
+              <span className="empty-kicker">{t('preview.emptyKicker')}</span>
+              <strong>{t('preview.emptyTitle')}</strong>
+              <p>{t('preview.emptyBody')}</p>
               <div className="empty-actions">
                 <button type="button" className="button primary" onClick={onImportClick}>
                   <Icon name="upload" size={16} />
-                  Impor media
+                  {t('preview.import')}
                 </button>
-                <button type="button" className="button" onClick={() => addTextClip('Teks baru')}>
+                <button type="button" className="button" onClick={() => addTextClip(t('common.newText'))}>
                   <Icon name="text" size={16} />
-                  Tambah teks
+                  {t('preview.addText')}
                 </button>
               </div>
             </div>
           ) : null}
-          {eyedropper ? <div className="pick-hint">Klik warna pada pratinjau</div> : null}
+          {eyedropper ? <div className="pick-hint">{t('preview.pickHint')}</div> : null}
           <div className="canvas-corner top-left" />
           <div className="canvas-corner top-right" />
           <div className="canvas-corner bottom-left" />
@@ -183,7 +185,7 @@ export const Preview = ({ onImportClick, onNotice }: PreviewProps): ReactNode =>
           <button
             type="button"
             className="icon-btn"
-            aria-label="Ke awal"
+            aria-label={t('preview.toStart')}
             onClick={() => {
               useEditorStore.getState().pause()
               setPlayhead(0)
@@ -191,21 +193,21 @@ export const Preview = ({ onImportClick, onNotice }: PreviewProps): ReactNode =>
           >
             <Icon name="back" size={17} />
           </button>
-          <button type="button" className="play-button" aria-label={isPlaying ? 'Jeda' : 'Putar'} onClick={togglePlay}>
+          <button type="button" className="play-button" aria-label={isPlaying ? t('preview.pause') : t('preview.play')} onClick={togglePlay}>
             <Icon name={isPlaying ? 'pause' : 'play'} size={20} />
           </button>
-          <button type="button" className="icon-btn" aria-label="Ke akhir" onClick={skipToEnd}>
+          <button type="button" className="icon-btn" aria-label={t('preview.toEnd')} onClick={skipToEnd}>
             <Icon name="forward" size={17} />
           </button>
         </div>
-        <div className="timecode" aria-label="Waktu saat ini">
+        <div className="timecode" aria-label={t('preview.timecode')}>
           <strong>{formatTimecode(playhead, fps)}</strong>
           <span>/ {formatTimecode(duration, fps)}</span>
         </div>
         <div className="transport-side end">
-          <span className="shortcut-hint">Spasi untuk putar</span>
+          <span className="shortcut-hint">{t('preview.shortcut')}</span>
           <span className={clsx('save-indicator', isPlaying && 'is-live')}>
-            {isPlaying ? 'Memutar' : 'Siap'}
+            {isPlaying ? t('preview.playing') : t('preview.ready')}
           </span>
         </div>
       </div>

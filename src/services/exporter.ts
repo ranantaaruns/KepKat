@@ -2,6 +2,7 @@ import coreURL from '@ffmpeg/core?url'
 import wasmURL from '@ffmpeg/core/wasm?url'
 import workerURL from '@ffmpeg/ffmpeg/worker?worker&url'
 import { FFmpeg } from '@ffmpeg/ffmpeg'
+import { t } from '../i18n'
 import fixWebmDuration from 'fix-webm-duration'
 import type { ExportSettings, Project } from '../editor/types'
 import { media, projectDuration } from '../editor/timelineMath'
@@ -31,7 +32,7 @@ interface ExportVoice {
   url: string
 }
 
-const abortError = (): DOMException => new DOMException('Ekspor dibatalkan.', 'AbortError')
+const abortError = (): DOMException => new DOMException(t('service.exportAborted'), 'AbortError')
 
 const checkAbort = (signal?: AbortSignal): void => {
   if (signal?.aborted) throw abortError()
@@ -188,7 +189,7 @@ const renderAudio = async (
   })
   const stopped = new Promise<void>((resolve, reject) => {
     recorder.addEventListener('stop', () => resolve(), { once: true })
-    recorder.addEventListener('error', () => reject(new Error('MediaRecorder gagal.')), { once: true })
+    recorder.addEventListener('error', () => reject(new Error(t('service.mediaRecorder'))), { once: true })
   })
   const duration = projectDuration(project)
   const startedAt = performance.now()
@@ -202,19 +203,26 @@ const renderAudio = async (
             reject(abortError())
             return
           }
-          const t = (performance.now() - startedAt) / 1000
-          if (t >= duration) {
+          const elapsed = (performance.now() - startedAt) / 1000
+          if (elapsed >= duration) {
             syncVoices(voices, project, duration - 0.001, context)
-            onProgress({ phase: 'render', progress: 1, message: 'Menutup rekaman…' })
+            onProgress({
+              phase: 'render',
+              progress: 1,
+              message: t('service.exportClosing'),
+            })
             resolve()
             return
           }
-          syncVoices(voices, project, t, context)
-          compositor.render(project, t, true)
+          syncVoices(voices, project, elapsed, context)
+          compositor.render(project, elapsed, true)
           onProgress({
             phase: 'render',
-            progress: Math.min(1, t / Math.max(0.01, duration)),
-            message: `Merender ${Math.ceil(t)} dari ${Math.ceil(duration)} detik`,
+            progress: Math.min(1, elapsed / Math.max(0.01, duration)),
+            message: t('service.exportRendering', {
+              current: Math.ceil(elapsed),
+              total: Math.ceil(duration),
+            }),
           })
           raf = requestAnimationFrame(frame)
         } catch (reason) {
@@ -262,7 +270,7 @@ export const transcodeToMp4 = async (
   }
   signal?.addEventListener('abort', abort, { once: true })
   try {
-    onProgress({ phase: 'transcode', progress: 0, message: 'Menyiapkan encoder MP4…' })
+    onProgress({ phase: 'transcode', progress: 0, message: t('service.exportPreparingEncoder') })
     await ffmpeg.load({ coreURL, wasmURL, classWorkerURL: workerURL })
     checkAbort(signal)
     ffmpeg.on('progress', ({ progress }) => {
@@ -270,7 +278,7 @@ export const transcodeToMp4 = async (
       onProgress({
         phase: 'transcode',
         progress: ratio,
-        message: `Mengubah ke MP4… ${Math.round(ratio * 100)}%`,
+        message: t('service.exportTranscoding', { percent: Math.round(ratio * 100) }),
       })
     })
     await ffmpeg.writeFile('input.webm', new Uint8Array(await input.arrayBuffer()))
@@ -312,10 +320,10 @@ export const transcodeToMp4 = async (
         'output.mp4',
       ])
     }
-    if (code !== 0) throw new Error('Encoder MP4 gagal memproses video.')
+    if (code !== 0) throw new Error(t('service.mp4Encode'))
     checkAbort(signal)
     const data = await ffmpeg.readFile('output.mp4')
-    if (typeof data === 'string') throw new Error('Hasil MP4 tidak valid.')
+    if (typeof data === 'string') throw new Error(t('service.mp4Invalid'))
     const bytes = new Uint8Array(data.byteLength)
     bytes.set(data)
     return new Blob([bytes], { type: 'video/mp4' })
@@ -336,20 +344,20 @@ export const exportProject = async (
   signal?: AbortSignal,
 ): Promise<ExportResult> => {
   const duration = projectDuration(project)
-  if (duration <= 0) throw new Error('Timeline masih kosong. Tambahkan klip sebelum ekspor.')
+  if (duration <= 0) throw new Error(t('export.empty'))
   if (typeof MediaRecorder === 'undefined') {
-    throw new Error('Browser ini tidak mendukung MediaRecorder. Coba Firefox atau Chrome terbaru.')
+    throw new Error(t('service.mediaRecorderUnsupported'))
   }
   const { width, height } = exportResolution(project, settings.resolution)
   if (width * height > 8_300_000) {
     onProgress({
       phase: 'prepare',
       progress: 0,
-      message: 'Resolusi tinggi: proses render akan lebih lama.',
+      message: t('service.exportHighRes'),
     })
   }
   await document.fonts.ready
-  onProgress({ phase: 'prepare', progress: 0, message: 'Menyiapkan media…' })
+  onProgress({ phase: 'prepare', progress: 0, message: t('service.exportPreparingMedia') })
   await primeVideos(project)
   checkAbort(signal)
 
@@ -359,10 +367,10 @@ export const exportProject = async (
   const compositor = new Compositor(canvas)
   try {
     compositor.render(project, 0, false)
-    onProgress({ phase: 'render', progress: 0, message: 'Mulai merender…' })
+    onProgress({ phase: 'render', progress: 0, message: t('service.exportStartRender') })
     const webm = await renderAudio(project, canvas, compositor, settings, signal, onProgress)
     if (settings.format === 'webm') {
-      onProgress({ phase: 'done', progress: 1, message: 'WebM siap.' })
+      onProgress({ phase: 'done', progress: 1, message: t('service.exportWebmReady') })
       return { blob: webm, extension: 'webm' }
     }
     const mp4 = await transcodeToMp4(webm, settings, signal, (update) => {
@@ -372,7 +380,7 @@ export const exportProject = async (
         message: update.message,
       })
     })
-    onProgress({ phase: 'done', progress: 1, message: 'MP4 siap.' })
+    onProgress({ phase: 'done', progress: 1, message: t('service.exportMp4Ready') })
     return { blob: mp4, extension: 'mp4' }
   } finally {
     compositor.dispose()

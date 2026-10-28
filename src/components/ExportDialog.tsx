@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
 import clsx from 'clsx'
+import { useT, type TranslationKey } from '../i18n'
 import { useEditorStore } from '../editor/store'
 import { projectDuration } from '../editor/timelineMath'
 import type { ExportSettings } from '../editor/types'
@@ -21,11 +22,11 @@ const defaultName = (name: string): string =>
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '') || 'kepkat-export'
 
-const phaseLabel: Record<ExportPhase, string> = {
-  prepare: 'Menyiapkan',
-  render: 'Merender',
-  transcode: 'Transcode',
-  done: 'Selesai',
+const phaseKey: Record<ExportPhase, TranslationKey> = {
+  prepare: 'export.phase.prepare',
+  render: 'export.phase.render',
+  transcode: 'export.phase.transcode',
+  done: 'export.phase.done',
 }
 
 interface ExportFormProps {
@@ -57,6 +58,7 @@ export const ExportDialog = ({ open, onOpenChange, onNotice }: ExportDialogProps
 }
 
 const ExportForm = ({ controllerRef, onNotice }: ExportFormProps): ReactNode => {
+  const t = useT()
   const project = useEditorStore((state) => state.project)
   const duration = projectDuration(project)
   const [format, setFormat] = useState<ExportSettings['format']>('webm')
@@ -87,7 +89,7 @@ const ExportForm = ({ controllerRef, onNotice }: ExportFormProps): ReactNode => 
 
   const start = async (): Promise<void> => {
     if (duration <= 0) {
-      setError('Timeline masih kosong. Tambahkan klip sebelum ekspor.')
+      setError(t('export.empty'))
       return
     }
     const controller = new AbortController()
@@ -120,15 +122,15 @@ const ExportForm = ({ controllerRef, onNotice }: ExportFormProps): ReactNode => 
       })
       setPhase('done')
       setProgress(1)
-      setMessage('Berkas sudah diunduh.')
-      onNotice(`Ekspor selesai: ${output.extension.toUpperCase()}`)
+      setMessage(t('export.downloaded'))
+      onNotice(t('export.completeNotice', { format: output.extension.toUpperCase() }))
     } catch (reason) {
       if (reason instanceof DOMException && reason.name === 'AbortError') {
-        setMessage('Ekspor dibatalkan.')
+        setMessage(t('export.cancelled'))
         setPhase('prepare')
         setProgress(0)
       } else {
-        const text = reason instanceof Error ? reason.message : 'Ekspor gagal.'
+        const text = reason instanceof Error ? reason.message : t('export.failed')
         setError(text)
         onNotice(text, 'error')
       }
@@ -146,14 +148,12 @@ const ExportForm = ({ controllerRef, onNotice }: ExportFormProps): ReactNode => 
     <Dialog.Content className="dialog-content export-dialog">
           <div className="dialog-head">
             <div>
-              <span className="eyebrow">Ekspor</span>
-              <Dialog.Title>Bawa keluar dari Kepkat.</Dialog.Title>
-              <Dialog.Description>
-                Render dilakukan di browser. Untuk MP4, berkas WebM akan dikonversi lebih dulu.
-              </Dialog.Description>
+              <span className="eyebrow">{t('export.eyebrow')}</span>
+              <Dialog.Title>{t('export.title')}</Dialog.Title>
+              <Dialog.Description>{t('export.description')}</Dialog.Description>
             </div>
             <Dialog.Close asChild>
-              <button type="button" className="icon-btn" aria-label="Tutup dialog ekspor">
+              <button type="button" className="icon-btn" aria-label={t('export.closeDialog')}>
                 <Icon name="close" size={18} />
               </button>
             </Dialog.Close>
@@ -161,7 +161,7 @@ const ExportForm = ({ controllerRef, onNotice }: ExportFormProps): ReactNode => 
 
           <div className="export-body">
             <div className="export-section">
-              <span className="field-label">Format</span>
+              <span className="field-label">{t('export.format')}</span>
               <div className="format-grid">
                 <button
                   type="button"
@@ -171,7 +171,7 @@ const ExportForm = ({ controllerRef, onNotice }: ExportFormProps): ReactNode => 
                 >
                   <span className="format-icon">W</span>
                   <strong>WebM</strong>
-                  <span>Cepat, kualitas baik, langsung dari perangkat.</span>
+                  <span>{t('export.webmNote')}</span>
                 </button>
                 <button
                   type="button"
@@ -181,14 +181,14 @@ const ExportForm = ({ controllerRef, onNotice }: ExportFormProps): ReactNode => 
                 >
                   <span className="format-icon">M</span>
                   <strong>MP4</strong>
-                  <span>Kompatibel luas. Perlu waktu transcode tambahan.</span>
+                  <span>{t('export.mp4Note')}</span>
                 </button>
               </div>
             </div>
 
             <div className="export-grid">
               <label className="select-field">
-                <span>Resolusi</span>
+                <span>{t('export.resolution')}</span>
                 <span className="select-wrap">
                   <select
                     value={resolution}
@@ -205,7 +205,7 @@ const ExportForm = ({ controllerRef, onNotice }: ExportFormProps): ReactNode => 
                 </span>
               </label>
               <label className="select-field">
-                <span>Frame rate</span>
+                <span>{t('export.frameRate')}</span>
                 <span className="select-wrap">
                   <select
                     value={String(fps)}
@@ -221,7 +221,7 @@ const ExportForm = ({ controllerRef, onNotice }: ExportFormProps): ReactNode => 
                 </span>
               </label>
               <label className="select-field">
-                <span>Kualitas</span>
+                <span>{t('export.quality')}</span>
                 <span className="select-wrap">
                   <select
                     value={quality}
@@ -230,15 +230,15 @@ const ExportForm = ({ controllerRef, onNotice }: ExportFormProps): ReactNode => 
                       setQuality(event.target.value === 'high' ? 'high' : 'medium')
                     }
                   >
-                    <option value="high">Tinggi</option>
-                    <option value="medium">Sedang</option>
+                    <option value="high">{t('export.high')}</option>
+                    <option value="medium">{t('export.medium')}</option>
                   </select>
                 </span>
               </label>
             </div>
 
             <label className="filename-field">
-              <span>Nama berkas</span>
+              <span>{t('export.fileName')}</span>
               <span className="filename-input">
                 <input
                   value={fileName}
@@ -252,43 +252,37 @@ const ExportForm = ({ controllerRef, onNotice }: ExportFormProps): ReactNode => 
 
             <div className="export-summary">
               <div>
-                <span>Ukuran bingkai</span>
+                <span>{t('export.frameSize')}</span>
                 <strong>
                   {dimensions.width} × {dimensions.height}
                 </strong>
               </div>
               <div>
-                <span>Durasi</span>
-                <strong>{Math.ceil(duration)} detik</strong>
+                <span>{t('export.duration')}</span>
+                <strong>{t('export.seconds', { count: Math.ceil(duration) })}</strong>
               </div>
               <div>
-                <span>Proses</span>
-                <strong>{format === 'mp4' ? 'Render + transcode' : 'Render langsung'}</strong>
+                <span>{t('export.process')}</span>
+                <strong>{format === 'mp4' ? t('export.renderTranscode') : t('export.renderDirect')}</strong>
               </div>
             </div>
 
             {format === 'webm' ? (
               <div className="note-card">
                 <Icon name="alert" size={18} />
-                <p>
-                  WebM direkam secara real-time. Biarkan tab ini tetap aktif selama proses
-                  berlangsung; pindah tab bisa membuat frame tersendat.
-                </p>
+                <p>{t('export.webmWarning')}</p>
               </div>
             ) : (
               <div className="note-card">
                 <Icon name="alert" size={18} />
-                <p>
-                  MP4 memakai ffmpeg.wasm. Unduhan pertama akan memuat encoder sekitar 30 MB,
-                  lalu proses transcode bisa memakan waktu lebih lama dari durasi video.
-                </p>
+                <p>{t('export.mp4Warning')}</p>
               </div>
             )}
 
             {active || result || error ? (
               <div className={clsx('export-progress', error && 'has-error')}>
                 <div className="export-progress-head">
-                  <span>{error ? 'Gagal' : result ? 'Selesai' : phaseLabel[phase]}</span>
+                  <span>{error ? t('export.failedLabel') : result ? t('export.doneLabel') : t(phaseKey[phase])}</span>
                   <strong>{Math.round(progress * 100)}%</strong>
                 </div>
                 <div className="progress-track">
@@ -302,12 +296,12 @@ const ExportForm = ({ controllerRef, onNotice }: ExportFormProps): ReactNode => 
           <div className="dialog-actions">
             {active ? (
               <button type="button" className="button danger" onClick={cancel}>
-                Batalkan
+                {t('export.cancel')}
               </button>
             ) : (
               <Dialog.Close asChild>
                 <button type="button" className="button">
-                  Tutup
+                  {t('export.close')}
                 </button>
               </Dialog.Close>
             )}
@@ -318,7 +312,7 @@ const ExportForm = ({ controllerRef, onNotice }: ExportFormProps): ReactNode => 
               onClick={() => void start()}
             >
               <Icon name={result ? 'check' : 'export'} size={16} />
-              {active ? 'Memproses…' : result ? 'Ekspor lagi' : `Ekspor ${format.toUpperCase()}`}
+              {active ? t('export.processing') : result ? t('export.exportAgain') : t('export.exportFormat', { format: format.toUpperCase() })}
             </button>
           </div>
     </Dialog.Content>

@@ -1,3 +1,4 @@
+import { t, type TranslationKey } from '../i18n'
 import type { Clip, MediaAsset, Project, Track, TrackKind } from './types'
 
 export const clamp = (value: number, min: number, max: number): number =>
@@ -161,15 +162,11 @@ export const rulerStep = (pxPerSecond: number): number => {
 
 export const projectAspect = (project: Project): number => project.width / project.height
 
-export const trackKindLabel = (kind: TrackKind): string => {
-  switch (kind) {
-    case 'video':
-      return 'Video'
-    case 'overlay':
-      return 'Overlay'
-    case 'text':
-      return 'Teks'
-    default:
-      return 'Audio'
-  }
+const TRACK_KIND_KEYS: Record<TrackKind, TranslationKey> = {
+  video: 'trackKind.video',
+  overlay: 'trackKind.overlay',
+  text: 'trackKind.text',
+  audio: 'trackKind.audio',
 }
+
+export const trackKindLabel = (kind: TrackKind): string => t(TRACK_KIND_KEYS[kind])
