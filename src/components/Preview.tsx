@@ -1,0 +1,214 @@
+import { useEffect, useRef, useState, type PointerEvent, type ReactNode } from 'react'
+import clsx from 'clsx'
+import { useEditorStore } from '../editor/store'
+import { formatTimecode, projectDuration } from '../editor/timelineMath'
+import { Compositor } from '../services/compositor'
+import { Icon } from './Icon'
+
+interface PreviewProps {
+  onImportClick: () => void
+  onNotice: (message: string, tone?: 'normal' | 'error') => void
+}
+
+const rgbToHex = (r: number, g: number, b: number): string =>
+  `#${[r, g, b].map((value) => Math.round(value).toString(16).padStart(2, '0')).join('')}`
+
+export const Preview = ({ onImportClick, onNotice }: PreviewProps): ReactNode => {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const stageRef = useRef<HTMLDivElement>(null)
+  const shellRef = useRef<HTMLDivElement>(null)
+  const compositorRef = useRef<Compositor | null>(null)
+  const [error, setError] = useState('')
+  const aspect = useEditorStore((state) => state.project.width / state.project.height)
+  const projectWidth = useEditorStore((state) => state.project.width)
+  const projectHeight = useEditorStore((state) => state.project.height)
+  const projectName = useEditorStore((state) => state.project.name)
+  const clipCount = useEditorStore((state) => state.project.clips.length)
+  const playhead = useEditorStore((state) => state.playhead)
+  const duration = useEditorStore((state) => projectDuration(state.project))
+  const isPlaying = useEditorStore((state) => state.isPlaying)
+  const fps = useEditorStore((state) => state.project.fps)
+  const togglePlay = useEditorStore((state) => state.togglePlay)
+  const setPlayhead = useEditorStore((state) => state.setPlayhead)
+  const addTextClip = useEditorStore((state) => state.addTextClip)
+  const eyedropper = useEditorStore((state) => state.eyedropper)
+  const setEyedropper = useEditorStore((state) => state.setEyedropper)
+  const selectedClipId = useEditorStore((state) => state.selectedClipId)
+  const updateChroma = useEditorStore((state) => state.updateChroma)
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    try {
+      const compositor = new Compositor(canvas)
+      compositorRef.current = compositor
+      let raf = 0
+      const loop = (): void => {
+        const state = useEditorStore.getState()
+        compositor.render(state.project, state.playhead, state.isPlaying)
+        raf = requestAnimationFrame(loop)
+      }
+      raf = requestAnimationFrame(loop)
+      return () => {
+        cancelAnimationFrame(raf)
+        compositor.dispose()
+        compositorRef.current = null
+      }
+    } catch (reason) {
+      const message = reason instanceof Error ? reason.message : 'Pratinjau tidak bisa dimulai.'
+      queueMicrotask(() => setError(message))
+      return
+    }
+  }, [])
+
+  useEffect(() => {
+    const stageElement = stageRef.current
+    if (!stageElement) return
+    const measure = (): void => {
+      const rect = stageElement.getBoundingClientRect()
+      const availableWidth = Math.max(120, rect.width - 48)
+      const availableHeight = Math.max(80, rect.height - 48)
+      const width = Math.min(availableWidth, availableHeight * aspect)
+      const height = width / aspect
+      const shell = shellRef.current
+      if (shell) {
+        shell.style.width = `${width}px`
+        shell.style.height = `${height}px`
+      }
+      const canvas = canvasRef.current
+      if (canvas) {
+        const dpr = Math.min(2, window.devicePixelRatio || 1)
+        const maxWidth = 1440
+        const targetWidth = Math.min(maxWidth, Math.round(width * dpr))
+        canvas.width = Math.max(2, targetWidth)
+        canvas.height = Math.max(2, Math.round(targetWidth / aspect))
+      }
+    }
+    const observer = new ResizeObserver(measure)
+    observer.observe(stageElement)
+    return () => observer.disconnect()
+  }, [aspect])
+
+  const pickColor = (event: PointerEvent<HTMLCanvasElement>): void => {
+    if (!eyedropper) return
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const rect = canvas.getBoundingClientRect()
+    const x = Math.floor(((event.clientX - rect.left) / rect.width) * canvas.width)
+    const y = Math.floor(((event.clientY - rect.top) / rect.height) * canvas.height)
+    const sample = document.createElement('canvas')
+    sample.width = canvas.width
+    sample.height = canvas.height
+    const context = sample.getContext('2d', { willReadFrequently: true })
+    if (!context) return
+    context.drawImage(canvas, 0, 0)
+    const pixel = context.getImageData(
+      Math.max(0, Math.min(canvas.width - 1, x)),
+      Math.max(0, Math.min(canvas.height - 1, y)),
+      1,
+      1,
+    ).data
+    const hex = rgbToHex(pixel[0], pixel[1], pixel[2])
+    if (selectedClipId) {
+      updateChroma(selectedClipId, { color: hex, enabled: true })
+      onNotice(`Warna kunci diambil: ${hex.toUpperCase()}`)
+    }
+    setEyedropper(false)
+  }
+
+  const skipToEnd = (): void => {
+    useEditorStore.getState().pause()
+    setPlayhead(duration)
+  }
+
+  return (
+    <section className="preview-panel" aria-label="Pratinjau video">
+      <div className="preview-head">
+        <div>
+          <span className="eyebrow">Pratinjau</span>
+          <strong>{projectName}</strong>
+        </div>
+        <div className="preview-meta">
+          <span>
+            {projectWidth}×{projectHeight}
+          </span>
+          <span>{fps} fps</span>
+          <span className={clsx('live-dot', isPlaying && 'is-playing')} />
+        </div>
+      </div>
+
+      <div className="preview-stage" ref={stageRef}>
+        <div className={clsx('canvas-shell', eyedropper && 'is-picking')} ref={shellRef}>
+          <canvas
+            ref={canvasRef}
+            className="preview-canvas"
+            onPointerDown={pickColor}
+            onDoubleClick={togglePlay}
+            aria-label="Kanvas pratinjau"
+          />
+          {error ? (
+            <div className="preview-empty">
+              <Icon name="alert" size={24} />
+              <strong>Pratinjau gagal</strong>
+              <span>{error}</span>
+            </div>
+          ) : null}
+          {!error && clipCount === 0 ? (
+            <div className="preview-empty">
+              <span className="empty-kicker">KANVAS KOSONG</span>
+              <strong>Mulai dari satu potongan.</strong>
+              <p>Impor video, gambar, atau musik. Semua diproses di perangkat ini.</p>
+              <div className="empty-actions">
+                <button type="button" className="button primary" onClick={onImportClick}>
+                  <Icon name="upload" size={16} />
+                  Impor media
+                </button>
+                <button type="button" className="button" onClick={() => addTextClip('Teks baru')}>
+                  <Icon name="text" size={16} />
+                  Tambah teks
+                </button>
+              </div>
+            </div>
+          ) : null}
+          {eyedropper ? <div className="pick-hint">Klik warna pada pratinjau</div> : null}
+          <div className="canvas-corner top-left" />
+          <div className="canvas-corner top-right" />
+          <div className="canvas-corner bottom-left" />
+          <div className="canvas-corner bottom-right" />
+        </div>
+      </div>
+
+      <div className="transport">
+        <div className="transport-side">
+          <button
+            type="button"
+            className="icon-btn"
+            aria-label="Ke awal"
+            onClick={() => {
+              useEditorStore.getState().pause()
+              setPlayhead(0)
+            }}
+          >
+            <Icon name="back" size={17} />
+          </button>
+          <button type="button" className="play-button" aria-label={isPlaying ? 'Jeda' : 'Putar'} onClick={togglePlay}>
+            <Icon name={isPlaying ? 'pause' : 'play'} size={20} />
+          </button>
+          <button type="button" className="icon-btn" aria-label="Ke akhir" onClick={skipToEnd}>
+            <Icon name="forward" size={17} />
+          </button>
+        </div>
+        <div className="timecode" aria-label="Waktu saat ini">
+          <strong>{formatTimecode(playhead, fps)}</strong>
+          <span>/ {formatTimecode(duration, fps)}</span>
+        </div>
+        <div className="transport-side end">
+          <span className="shortcut-hint">Spasi untuk putar</span>
+          <span className={clsx('save-indicator', isPlaying && 'is-live')}>
+            {isPlaying ? 'Memutar' : 'Siap'}
+          </span>
+        </div>
+      </div>
+    </section>
+  )
+}
