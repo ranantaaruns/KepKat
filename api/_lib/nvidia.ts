@@ -1,7 +1,7 @@
-import { agentPlanSchema, agentPlanToolSchema } from '../../src/ai/schema'
-import type { AgentPlan, AiChatMessage, AiMode, ProjectSnapshot } from '../../src/ai/schema'
-import { AI_TOOL_NAME, buildProviderMessages } from '../../src/ai/prompt'
-import { ApiError } from './errors'
+import { agentPlanSchema, agentPlanToolSchema } from '../../src/ai/schema.js'
+import type { AgentPlan, AiChatMessage, AiMode, ProjectSnapshot } from '../../src/ai/schema.js'
+import { AI_TOOL_NAME, buildProviderMessages } from '../../src/ai/prompt.js'
+import { ApiError } from './errors.js'
 
 interface NvidiaToolCall {
   id?: string

@@ -1,4 +1,4 @@
-import type { AiErrorCode } from '../../src/ai/types'
+import type { AiErrorCode } from '../../src/ai/types.js'
 
 export class ApiError extends Error {
   status: number

@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { agentPlanSchema } from './schema'
+import { FILTER_PRESETS, STYLE_PACKS, TRANSITION_PRESETS } from '../editor/presets'
+import {
+  agentPlanSchema,
+  FILTER_PRESET_IDS,
+  STYLE_PACK_IDS,
+  TRANSITION_PRESET_IDS,
+} from './schema'
 
 const validPlan = {
   title: 'Tighten the intro',
@@ -49,5 +55,11 @@ describe('agentPlanSchema', () => {
         actions: [{ type: 'set_speed', clipId: 'clip-1', speed: 20 }],
       }).success,
     ).toBe(false)
+  })
+
+  it('keeps preset ids in sync with the editor presets', () => {
+    expect(FILTER_PRESETS.map((item) => item.id)).toEqual([...FILTER_PRESET_IDS])
+    expect(TRANSITION_PRESETS.map((item) => item.type)).toEqual([...TRANSITION_PRESET_IDS])
+    expect(STYLE_PACKS.map((item) => item.id)).toEqual([...STYLE_PACK_IDS])
   })
 })

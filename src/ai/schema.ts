@@ -1,9 +1,44 @@
 import { z } from 'zod'
-import { FILTER_PRESETS, STYLE_PACKS, TRANSITION_PRESETS } from '../editor/presets'
 
-const filterIds = FILTER_PRESETS.map((item) => item.id) as [string, ...string[]]
-const transitionIds = TRANSITION_PRESETS.map((item) => item.type) as [string, ...string[]]
-const styleIds = STYLE_PACKS.map((item) => item.id) as [string, ...string[]]
+export const FILTER_PRESET_IDS = [
+  'none',
+  'cinema',
+  'warm',
+  'cool',
+  'film',
+  'mono',
+  'vhs',
+  'dream',
+  'punch',
+  'night',
+  'dawn',
+  'retro',
+] as const
+
+export const TRANSITION_PRESET_IDS = [
+  'dissolve',
+  'fade',
+  'slide',
+  'zoom',
+  'wipe',
+  'blur',
+  'glitch',
+  'whip',
+  'rotate',
+  'light',
+] as const
+
+export const STYLE_PACK_IDS = [
+  'warm-film',
+  'bright-vlog',
+  'night-neon',
+  'tape-retro',
+  'soft-portrait',
+] as const
+
+const filterIds = [...FILTER_PRESET_IDS] as [string, ...string[]]
+const transitionIds = [...TRANSITION_PRESET_IDS] as [string, ...string[]]
+const styleIds = [...STYLE_PACK_IDS] as [string, ...string[]]
 
 const filterId = z.enum(filterIds).describe('A filter preset id from the project snapshot.')
 const transitionType = z.enum(transitionIds).describe('A transition preset id.')

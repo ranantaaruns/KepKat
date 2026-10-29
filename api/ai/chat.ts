@@ -1,9 +1,9 @@
-import type { ApiRequest, ApiResponse } from '../_lib/types'
-import { aiChatRequestSchema } from '../../src/ai/schema'
-import { requestAgent } from '../_lib/nvidia'
-import { consumeRateLimit } from '../_lib/rateLimit'
-import { verifyTurnstile } from '../_lib/turnstile'
-import { ApiError } from '../_lib/errors'
+import type { ApiRequest, ApiResponse } from '../_lib/types.js'
+import { aiChatRequestSchema } from '../../src/ai/schema.js'
+import { requestAgent } from '../_lib/nvidia.js'
+import { consumeRateLimit } from '../_lib/rateLimit.js'
+import { verifyTurnstile } from '../_lib/turnstile.js'
+import { ApiError } from '../_lib/errors.js'
 
 export const config = {
   maxDuration: 60,
