@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import clsx from 'clsx'
+import { AiPanel } from './components/AiPanel'
 import { ExportDialog } from './components/ExportDialog'
 import { Icon } from './components/Icon'
 import { Inspector } from './components/Inspector'
@@ -32,6 +33,7 @@ interface Toast {
 export default function App(): ReactNode {
   const [ready, setReady] = useState(false)
   const [exportOpen, setExportOpen] = useState(false)
+  const [aiOpen, setAiOpen] = useState(false)
   const t = useT()
   const [importing, setImporting] = useState(false)
   const [importingName, setImportingName] = useState<string | null>(null)
@@ -199,6 +201,7 @@ export default function App(): ReactNode {
       if (event.key === 'Escape') {
         setMobilePanel(null)
         setExportOpen(false)
+        setAiOpen(false)
       }
     }
     window.addEventListener('keydown', onKeyDown)
@@ -270,7 +273,13 @@ export default function App(): ReactNode {
 
   return (
     <div className="app-shell">
-      <TopBar onExport={() => setExportOpen(true)} />
+      <TopBar
+        onExport={() => setExportOpen(true)}
+        onOpenAi={() => {
+          setMobilePanel(null)
+          setAiOpen(true)
+        }}
+      />
       <main className="workspace">
         <LeftPanel
           onImportFiles={(files) => void importFiles(files)}
@@ -293,6 +302,15 @@ export default function App(): ReactNode {
           onClick={() => setMobilePanel(null)}
         />
       ) : null}
+      {aiOpen ? (
+        <button
+          type="button"
+          className="ai-scrim"
+          aria-label={t('app.closePanel')}
+          onClick={() => setAiOpen(false)}
+        />
+      ) : null}
+      <AiPanel open={aiOpen} onClose={() => setAiOpen(false)} onNotice={notify} />
       <input
         ref={fileInputRef}
         type="file"

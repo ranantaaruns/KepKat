@@ -7,6 +7,7 @@ import { Icon } from './Icon'
 
 interface TopBarProps {
   onExport: () => void
+  onOpenAi: () => void
 }
 
 const saveKey: Record<SaveState, TranslationKey> = {
@@ -16,7 +17,7 @@ const saveKey: Record<SaveState, TranslationKey> = {
   error: 'save.error',
 }
 
-export const TopBar = ({ onExport }: TopBarProps): ReactNode => {
+export const TopBar = ({ onExport, onOpenAi }: TopBarProps): ReactNode => {
   const t = useT()
   const language = useLanguage()
   const name = useEditorStore((state) => state.project.name)
@@ -79,6 +80,11 @@ export const TopBar = ({ onExport }: TopBarProps): ReactNode => {
           <span className="save-dot" />
           {t(saveKey[saveState])}
         </div>
+
+        <button type="button" className="button ai-toggle" onClick={onOpenAi}>
+          <Icon name="sparkle" size={15} />
+          <span>{t('ai.open')}</span>
+        </button>
 
         <div className="language-switch" role="group" aria-label={t('language.label')}>
           <button

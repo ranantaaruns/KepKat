@@ -36,6 +36,8 @@ import {
   type TextAnimationPreset,
 } from './keyframes'
 import { filterName, gradeForFilter, TRANSITION_PRESETS } from './presets'
+import { executeAgentPlan, type AgentExecutionResult } from '../ai/executor'
+import type { AgentPlan } from '../ai/schema'
 import {
   clipEnd,
   clipsOnTrack,
@@ -101,6 +103,7 @@ interface EditorState {
   undo: () => void
   redo: () => void
   mutateProject: (recipe: (draft: Project) => void, options?: MutateOptions) => void
+  applyAgentPlan: (plan: AgentPlan) => AgentExecutionResult
 
   updateClip: (clipId: string, patch: Partial<Clip>, options?: MutateOptions) => void
   updateTransform: (clipId: string, patch: Partial<Transform>, options?: MutateOptions) => void
@@ -389,6 +392,26 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         lastHistoryAt: Date.now(),
       }
     }),
+
+  applyAgentPlan: (plan) => {
+    const state = get()
+    const result = executeAgentPlan(state.project, plan, state.selectedClipId)
+    const selected = result.selectedClipId
+      ? result.project.clips.find((item) => item.id === result.selectedClipId)
+      : undefined
+    set({
+      project: result.project,
+      selectedClipId: result.selectedClipId,
+      inspectorTab: selected ? selectableTab(selected) : state.inspectorTab,
+      playhead: Math.min(state.playhead, projectDuration(result.project)),
+      isPlaying: false,
+      historyPast: [...state.historyPast, state.project].slice(-MAX_HISTORY),
+      historyFuture: [],
+      lastHistoryKey: null,
+      lastHistoryAt: Date.now(),
+    })
+    return result
+  },
 
   updateClip: (clipId, patch, options) =>
     get().mutateProject((draft) => {
